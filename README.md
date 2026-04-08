@@ -129,7 +129,7 @@ O banco possui três tabelas principais:
 
 ## CI/CD
 
-O projeto inclui um workflow do GitHub Actions (`.github/workflows/ci.yml`) que executa automaticamente em cada push e pull request:
+O projeto inclui um workflow do GitHub Actions que executa automaticamente em cada push e pull request:
 
 1. Instalação de dependências
 2. Verificação de tipos TypeScript (`tsc --noEmit`)
