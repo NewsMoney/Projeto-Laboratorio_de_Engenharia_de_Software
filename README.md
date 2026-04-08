@@ -176,17 +176,6 @@ O projeto inclui um workflow do GitHub Actions (`.github/workflows/ci.yml`) que 
 
 **Backend:** Instalação de dependências, verificação de tipos TypeScript, execução dos testes unitários e build de produção.
 
-## Notas de Migração
-
-O diretório `backend/server/` contém arquivos stub (`trpc.ts`, `cookies.ts`, `systemRouter.ts`, `index.ts`) que substituem o framework original de autenticação. Esses stubs fornecem uma implementação funcional básica e devem ser adaptados para seu ambiente de produção:
-
-- **`trpc.ts`** — Inicialização do tRPC com procedures pública e protegida. Adapte o middleware de autenticação conforme sua estratégia (JWT, session, etc.).
-- **`cookies.ts`** — Configuração de cookies de sessão. Ajuste os parâmetros de segurança conforme seu domínio.
-- **`systemRouter.ts`** — Router de sistema com health check. Adicione procedures administrativas conforme necessário.
-- **`index.ts`** — Entry point do servidor. Implemente suas rotas de OAuth e sirva o build do frontend em produção.
-
-O hook `frontend/client/src/hooks/useAuth.ts` também é um stub que consome `trpc.auth.me`. Adapte-o para sua estratégia de autenticação.
-
 ## Licença
 
 MIT
