@@ -6,7 +6,7 @@ Aplicativo web de check-in em locais com mapa interativo, ranking de usuários e
 
 | Funcionalidade | Descrição |
 |---|---|
-| **Mapa Interativo** | Visualização de locais com Google Maps, geolocalização e marcadores clicáveis |
+| **Mapa Interativo** | Visualização de locais com Leaflet/OpenStreetMap, geolocalização e marcadores clicáveis |
 | **Busca de Locais** | Pesquisa por nome com listagem em tempo real |
 | **Detalhes do Local** | Informações completas, estatísticas e avaliações de cada local |
 | **Check-in** | Registro de visita com avaliação (1-5 estrelas), comentário e nível de ocupação |
@@ -19,35 +19,56 @@ Aplicativo web de check-in em locais com mapa interativo, ranking de usuários e
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 19, TypeScript, Tailwind CSS 4, shadcn/ui, wouter |
+| Frontend | React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Leaflet, wouter |
 | Backend | Express 4, tRPC 11, Drizzle ORM |
 | Banco de Dados | MySQL / TiDB |
-| Mapa | Google Maps JavaScript API |
+| Mapa | Leaflet + OpenStreetMap (CartoDB Dark tiles) |
 | Testes | Vitest |
 | Build | Vite 7, esbuild |
+| CI/CD | GitHub Actions |
 
 ## Estrutura do Projeto
 
+O repositório está organizado em três diretórios principais:
+
 ```
-client/
-  src/
-    pages/          ← Páginas (Home, Search, MapPage, Details, CheckIn, Ranking, Profile)
-    components/     ← Componentes reutilizáveis (AppLayout, BottomNav, DesktopSidebar, Map)
-    contexts/       ← Contextos React (ThemeContext)
-    hooks/          ← Hooks customizados
-    lib/trpc.ts     ← Cliente tRPC
-    App.tsx          ← Rotas e layout principal
-    index.css        ← Tema e estilos globais
-drizzle/
-  schema.ts          ← Schema do banco (users, places, checkins)
-  *.sql              ← Migrações SQL
-server/
-  db.ts              ← Helpers de consulta ao banco
-  routers.ts         ← Procedures tRPC (places, checkins, ranking, user, auth)
-  routers.test.ts    ← Testes unitários dos routers
-  storage.ts         ← Helpers de armazenamento S3
-shared/
-  const.ts           ← Constantes compartilhadas
+.github/
+  workflows/
+    ci.yml              ← Pipeline CI/CD (frontend + backend em paralelo)
+
+frontend/
+  client/
+    src/
+      pages/            ← Páginas (Home, Search, MapPage, Details, CheckIn, Ranking, Profile)
+      components/       ← Componentes reutilizáveis (AppLayout, BottomNav, LeafletMap, etc.)
+      contexts/         ← Contextos React (ThemeContext)
+      hooks/            ← Hooks customizados (useAuth, useMobile)
+      lib/trpc.ts       ← Cliente tRPC
+      App.tsx           ← Rotas e layout principal
+      index.css         ← Tema dark e estilos globais
+  shared/               ← Constantes e tipos compartilhados com o backend
+  server/               ← Stubs de tipo para o tRPC client (type-only)
+  package.json          ← Dependências e scripts do frontend
+  vite.config.ts        ← Configuração Vite com proxy para backend
+  tsconfig.json         ← Configuração TypeScript do frontend
+
+backend/
+  server/
+    index.ts            ← Entry point do servidor Express
+    routers.ts          ← Procedures tRPC (places, checkins, ranking, user, auth)
+    db.ts               ← Helpers de consulta ao banco
+    trpc.ts             ← Inicialização tRPC (router, procedures)
+    storage.ts          ← Helpers de armazenamento S3
+    *.test.ts           ← Testes unitários
+  drizzle/
+    schema.ts           ← Schema do banco (users, places, checkins)
+    *.sql               ← Migrações SQL
+  shared/               ← Constantes e tipos compartilhados
+  package.json          ← Dependências e scripts do backend
+  drizzle.config.ts     ← Configuração Drizzle Kit
+  tsconfig.json         ← Configuração TypeScript do backend
+
+README.md               ← Este arquivo
 ```
 
 ## Pré-requisitos
@@ -60,42 +81,62 @@ Para rodar o projeto localmente, é necessário ter instalado:
 
 ## Variáveis de Ambiente
 
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+Crie um arquivo `.env` em cada diretório (`frontend/` e `backend/`) com as variáveis necessárias.
+
+### Frontend (`frontend/.env`)
+
+| Variável | Descrição |
+|---|---|
+| `VITE_APP_ID` | ID da aplicação OAuth |
+| `VITE_OAUTH_PORTAL_URL` | URL do portal de login OAuth |
+| `VITE_FRONTEND_FORGE_API_KEY` | Chave de API para serviços frontend |
+| `VITE_FRONTEND_FORGE_API_URL` | URL base da API frontend |
+
+### Backend (`backend/.env`)
 
 | Variável | Descrição |
 |---|---|
 | `DATABASE_URL` | String de conexão MySQL (ex: `mysql://user:pass@host:3306/dbname`) |
 | `JWT_SECRET` | Chave secreta para assinatura de tokens de sessão |
-| `VITE_APP_ID` | ID da aplicação OAuth |
 | `OAUTH_SERVER_URL` | URL base do servidor OAuth |
-| `VITE_OAUTH_PORTAL_URL` | URL do portal de login OAuth (frontend) |
-| `VITE_FRONTEND_FORGE_API_KEY` | Chave de API para Google Maps (frontend) |
-| `VITE_FRONTEND_FORGE_API_URL` | URL base da API de mapas (frontend) |
+| `PORT` | Porta do servidor (padrão: 3000) |
 
 ## Instalação e Execução
 
+### Frontend
+
 ```bash
-# Instalar dependências
+cd frontend
 pnpm install
-
-# Gerar e aplicar migrações do banco de dados
-pnpm drizzle-kit generate
-pnpm drizzle-kit migrate
-
-# Rodar em modo de desenvolvimento
-pnpm dev
-
-# Rodar testes
-pnpm test
-
-# Build de produção
-pnpm build
-
-# Iniciar em produção
-pnpm start
+pnpm dev          # Inicia em http://localhost:5173 com proxy para backend
+pnpm build        # Build de produção
+pnpm check        # Verificação de tipos TypeScript
 ```
 
-O servidor de desenvolvimento estará disponível em `http://localhost:3000`.
+### Backend
+
+```bash
+cd backend
+pnpm install
+pnpm dev          # Inicia em http://localhost:3000
+pnpm build        # Build de produção
+pnpm start        # Inicia build de produção
+pnpm test         # Executa testes unitários
+pnpm db:generate  # Gera migrações do Drizzle
+pnpm db:migrate   # Aplica migrações ao banco
+```
+
+### Desenvolvimento Local
+
+Para desenvolvimento local, inicie o backend e o frontend em terminais separados. O frontend está configurado com proxy automático para o backend (`/api` redireciona para `http://localhost:3000`).
+
+```bash
+# Terminal 1 - Backend
+cd backend && pnpm dev
+
+# Terminal 2 - Frontend
+cd frontend && pnpm dev
+```
 
 ## Schema do Banco de Dados
 
@@ -129,12 +170,22 @@ O banco possui três tabelas principais:
 
 ## CI/CD
 
-O projeto inclui um workflow do GitHub Actions (`.github/workflows/ci.yml`) que executa automaticamente em cada push e pull request:
+O projeto inclui um workflow do GitHub Actions (`.github/workflows/ci.yml`) que executa dois jobs em paralelo em cada push e pull request:
 
-1. Instalação de dependências
-2. Verificação de tipos TypeScript (`tsc --noEmit`)
-3. Execução dos testes unitários (`vitest run`)
-4. Build de produção (`vite build + esbuild`)
+**Frontend:** Instalação de dependências, verificação de tipos TypeScript e build de produção. O artefato de build é disponibilizado para deploy.
+
+**Backend:** Instalação de dependências, verificação de tipos TypeScript, execução dos testes unitários e build de produção.
+
+## Notas de Migração
+
+O diretório `backend/server/` contém arquivos stub (`trpc.ts`, `cookies.ts`, `systemRouter.ts`, `index.ts`) que substituem o framework original de autenticação. Esses stubs fornecem uma implementação funcional básica e devem ser adaptados para seu ambiente de produção:
+
+- **`trpc.ts`** — Inicialização do tRPC com procedures pública e protegida. Adapte o middleware de autenticação conforme sua estratégia (JWT, session, etc.).
+- **`cookies.ts`** — Configuração de cookies de sessão. Ajuste os parâmetros de segurança conforme seu domínio.
+- **`systemRouter.ts`** — Router de sistema com health check. Adicione procedures administrativas conforme necessário.
+- **`index.ts`** — Entry point do servidor. Implemente suas rotas de OAuth e sirva o build do frontend em produção.
+
+O hook `frontend/client/src/hooks/useAuth.ts` também é um stub que consome `trpc.auth.me`. Adapte-o para sua estratégia de autenticação.
 
 ## Licença
 
