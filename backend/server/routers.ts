@@ -17,16 +17,71 @@ import {
   getPlaceStats,
   getTopUsers,
   getUserById,
+  registerUser,
+  loginUser,
 } from "./db";
 
 export const appRouter = router({
   system: systemRouter,
 
-  auth: router({
+    auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+
+    register: publicProcedure
+      .input(
+        z.object({
+          name: z.string().min(2),
+          email: z.string().email(),
+          password: z.string().min(4),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return registerUser({
+          name: input.name,
+          email: input.email,
+          password: input.password,
+        });
+      }),
+
+    login: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string(),
+          location: z
+            .object({
+              lat: z.number(),
+              lng: z.number(),
+            })
+            .nullable()
+            .optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const user = await loginUser({
+          email: input.email,
+          password: input.password,
+        });
+      
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+      
+        ctx.res.cookie(
+          COOKIE_NAME,
+          String(user.id),
+          cookieOptions
+        );
+      
+        return user;
+      }),
+
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+
+      ctx.res.clearCookie(COOKIE_NAME, {
+        ...cookieOptions,
+        maxAge: -1,
+      });
+
       return { success: true } as const;
     }),
   }),
