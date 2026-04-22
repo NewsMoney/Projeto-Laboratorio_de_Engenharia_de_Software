@@ -39,15 +39,15 @@ export default function Profile() {
         <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4 ring-2 ring-primary/20">
           <User size={36} className="text-muted-foreground" />
         </div>
-    
+
         <h2 className="text-lg font-bold text-foreground mb-1">
           Entre para ver seu perfil
         </h2>
-    
+
         <p className="text-sm text-muted-foreground mb-6 text-center">
-          Faça login para acompanhar seus check-ins e ranking
+          Faça login para acompanhar seus check-ins
         </p>
-    
+
         <Button
           onClick={() => setLocation("/login")}
         >

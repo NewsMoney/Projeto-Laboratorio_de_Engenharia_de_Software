@@ -94,18 +94,28 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full h-11 mt-2">
-              Entrar
+            <Button type="submit" className="w-full h-11 mt-2"> 
+                Entrar
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11"
-              onClick={() => setLocation("/")}
-            >
-              Voltar
-            </Button>
+            <div className="flex justify-between items-center pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => setLocation("/")}
+              >
+                Voltar
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setLocation("/register")}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Registrar
+              </button>
+            </div>
           </form>
         </div>
       </div>

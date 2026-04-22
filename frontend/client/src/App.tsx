@@ -13,6 +13,7 @@ import CheckIn from "./pages/CheckIn";
 import Ranking from "./pages/Ranking";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
+import register from "./pages/Register";
 
 function Router() {
   return (
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/ranking" component={Ranking} />
         <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
+        <Route path="/register" component={register} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
