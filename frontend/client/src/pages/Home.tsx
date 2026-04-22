@@ -41,7 +41,7 @@ export default function Home() {
             size="sm"
             variant="outline"
             onClick={() => {
-              window.location.href = getLoginUrl();
+              setLocation("/login");
             }}
           >
             Entrar

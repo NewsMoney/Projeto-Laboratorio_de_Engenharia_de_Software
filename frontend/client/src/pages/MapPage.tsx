@@ -57,12 +57,12 @@ export default function MapPage() {
                   </span>
                 )}
               </div>
-              <button
+              <Button
                 onClick={() => setSelectedPlace(null)}
                 className="text-muted-foreground hover:text-foreground ml-2"
               >
                 <X size={16} />
-              </button>
+              </Button>
             </div>
             <div className="flex gap-2 mt-3">
               <Button
