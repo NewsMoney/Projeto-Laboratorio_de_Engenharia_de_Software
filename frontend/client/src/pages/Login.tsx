@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -8,39 +10,46 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: () => {
+      toast.success("Login realizado com sucesso");
+      setLocation("/");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Falha no login");
+    },
+  });
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    let locationData = null;
+    if (!email.trim() || !password.trim()) {
+      toast.error("Preencha email e senha");
+      return;
+    }
+
+    const submitLogin = (locationData: { lat: number; lng: number } | null) => {
+      loginMutation.mutate({
+        email: email.trim(),
+        password,
+        location: locationData,
+      });
+    };
 
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          locationData = {
+          submitLogin({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-          };
-
-          console.log({
-            email,
-            password,
-            location: locationData,
           });
         },
         () => {
-          console.log({
-            email,
-            password,
-            location: null,
-          });
+          submitLogin(null);
         }
       );
     } else {
-      console.log({
-        email,
-        password,
-        location: null,
-      });
+      submitLogin(null);
     }
   }
 
@@ -94,8 +103,12 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full h-11 mt-2"> 
-                Entrar
+            <Button
+              type="submit"
+              className="w-full h-11 mt-2"
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? "Entrando..." : "Entrar"}
             </Button>
 
             <div className="flex justify-between items-center pt-1">

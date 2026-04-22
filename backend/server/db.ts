@@ -2,6 +2,7 @@ import { eq, desc, sql, like, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, places, checkins, InsertPlace, InsertCheckin } from "../drizzle/schema";
 import { ENV } from "./env";
+import bcrypt from "bcrypt";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -291,4 +292,84 @@ export async function getTopUsers(limit = 20) {
     .orderBy(sql`checkinCount DESC`)
     .limit(limit);
   return result;
+}
+
+// ─── Auth helpers ───────────────────────────────────────────────
+
+export async function registerUser(data: {
+  name: string;
+  email: string;
+  password: string;
+}) {
+  const db = await getDb();
+
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const exists = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, data.email))
+    .limit(1);
+
+  if (exists.length > 0) {
+    throw new Error("Email já cadastrado");
+  }
+
+  const passwordHash = await bcrypt.hash(data.password, 10);
+
+  const result = await db.insert(users).values({
+    name: data.name,
+    email: data.email,
+    passwordHash,
+    loginMethod: "local",
+    role: "user",
+    lastSignedIn: new Date(),
+  });
+
+  return {
+    id: result[0].insertId,
+  };
+}
+
+export async function loginUser(data: {
+  email: string;
+  password: string;
+}) {
+  const db = await getDb();
+
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, data.email))
+    .limit(1);
+
+  const user = result[0];
+
+  if (!user || !user.passwordHash) {
+    throw new Error("Usuário inválido");
+  }
+
+  const validPassword = await bcrypt.compare(
+    data.password,
+    user.passwordHash
+  );
+
+  if (!validPassword) {
+    throw new Error("Senha incorreta");
+  }
+
+  await db
+    .update(users)
+    .set({
+      lastSignedIn: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  return user;
 }

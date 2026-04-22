@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -9,16 +11,29 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const registerMutation = trpc.auth.register.useMutation({
+    onSuccess: () => {
+      toast.success("Conta criada com sucesso");
+      setLocation("/login");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Erro ao registrar");
+    },
+  });
+
   function handleRegister(e: React.FormEvent) {
     e.preventDefault();
 
-    console.log({
-      name,
-      email,
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    registerMutation.mutate({
+      name: name.trim(),
+      email: email.trim(),
       password,
     });
-
-    // futura integração backend
   }
 
   return (
@@ -85,8 +100,12 @@ export default function Register() {
               />
             </div>
 
-            <Button type="submit" className="w-full h-11">
-              Registrar
+            <Button
+              type="submit"
+              className="w-full h-11"
+              disabled={registerMutation.isPending}
+            >
+              {registerMutation.isPending ? "Registrando..." : "Registrar"}
             </Button>
           </form>
         </div>
