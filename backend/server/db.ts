@@ -1,7 +1,6 @@
 import { eq, desc, sql, like, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, places, checkins, InsertPlace, InsertCheckin } from "../drizzle/schema";
-import { ENV } from "./env";
 import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;

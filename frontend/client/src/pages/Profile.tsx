@@ -212,8 +212,8 @@ export default function Profile() {
           <Button
             variant="outline"
             className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               setLocation("/");
             }}
           >
