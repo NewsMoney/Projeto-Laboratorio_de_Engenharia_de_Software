@@ -355,6 +355,7 @@ export async function getTopPlaces(
       address: places.address,
       lat: places.lat,
       lng: places.lng,
+      category: places.category,
 
       checkinCount: sql<number>`
         COUNT(${checkins.id})

@@ -26,7 +26,6 @@ import {
   Shield,
   User,
   X,
-  Camera,
   Pencil,
 } from "lucide-react";
 
@@ -360,9 +359,9 @@ function ProfileHeader({
   );
 }
 
-/* ------------------------------------------------ */
+/* ------------------------------------------------- */
 /* Side Menu */
-/* ------------------------------------------------ */
+/* ------------------------------------------------- */
 
 function SideMenu({
   open,
@@ -379,11 +378,13 @@ function SideMenu({
       "/profile";
 
     if (navigator.share) {
-      await navigator.share({
-        title:
-          "Meu perfil JoinMe",
-        url,
-      });
+      try {
+        await navigator.share({
+          title:
+            "Meu perfil JoinMe",
+          url,
+        });
+      } catch {}
     } else {
       await navigator.clipboard.writeText(
         url
@@ -395,38 +396,45 @@ function SideMenu({
 
   return (
     <>
+      {/* overlay */}
       <div
         onClick={onClose}
         className={`
-          absolute inset-0 bg-black/50 z-40 transition-opacity
+          fixed inset-0 z-40 bg-black/50
+          transition-opacity duration-300
           ${
             open
-              ? "opacity-100"
+              ? "opacity-100 pointer-events-auto"
               : "opacity-0 pointer-events-none"
           }
         `}
       />
 
-      <div className="absolute top-0 right-0 h-full w-72 overflow-hidden z-50">
-        <div
-          className={`
-            h-full bg-card border-l border-border transition-transform duration-300
-            ${
-              open
-                ? "translate-x-0"
-                : "translate-x-full"
-            }
-          `}
-        >
-          <div className="p-4 border-b border-border flex justify-between">
+      {/* panel */}
+      <aside
+        className={`
+          fixed top-0 right-0 h-screen w-72 z-50
+          bg-card border-l border-border
+          transition-transform duration-300 ease-out
+          will-change-transform
+          ${
+            open
+              ? "translate-x-0"
+              : "translate-x-full"
+          }
+        `}
+      >
+        <div className="h-full flex flex-col">
+          <div className="h-14 px-4 border-b border-border flex items-center justify-between">
             <h2 className="font-bold">
               Menu
             </h2>
 
             <button
               onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
@@ -457,7 +465,9 @@ function SideMenu({
             >
               Privacidade
             </MenuButton>
+          </div>
 
+          <div className="mt-auto p-2 border-t border-border">
             <MenuButton
               danger
               icon={
@@ -471,10 +481,14 @@ function SideMenu({
             </MenuButton>
           </div>
         </div>
-      </div>
+      </aside>
     </>
   );
 }
+
+/* ------------------------------------------------- */
+/* Menu Button */
+/* ------------------------------------------------- */
 
 function MenuButton({
   children,
@@ -486,18 +500,159 @@ function MenuButton({
     <button
       onClick={onClick}
       className={`
-        w-full h-11 px-3 rounded-xl flex items-center gap-3 text-sm
+        w-full min-h-[46px]
+        px-3 rounded-xl
+        flex items-center gap-3
+        text-sm text-left
+        transition-colors
         hover:bg-secondary
+        active:scale-[0.99]
+
         ${
           danger
-            ? "text-destructive"
+            ? "text-destructive hover:bg-destructive/10"
             : ""
         }
       `}
     >
-      {icon}
-      {children}
+      <span className="shrink-0">
+        {icon}
+      </span>
+
+      <span>
+        {children}
+      </span>
     </button>
+  );
+}
+
+/* ------------------------------------------------- */
+/* Edit Profile Modal */
+/* ------------------------------------------------- */
+
+function EditProfileModal({
+  open,
+  onClose,
+  bio,
+  setBio,
+  avatarPreview,
+  setAvatarPreview,
+  onSave,
+  saving,
+}: EditProfileModalProps) {
+  if (!open) return null;
+
+  function handleImage(
+    e: ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      e.target.files?.[0];
+
+    if (!file) return;
+
+    const url =
+      URL.createObjectURL(
+        file
+      );
+
+    setAvatarPreview(url);
+  }
+
+  return (
+    <>
+      {/* backdrop */}
+      <div
+        onClick={onClose}
+        className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+      />
+
+      {/* modal */}
+      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[70]">
+        <div className="bg-card border border-border rounded-3xl shadow-2xl p-5 max-w-md mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-lg">
+              Editar perfil
+            </h2>
+
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Avatar */}
+          <div className="flex flex-col items-center mb-5">
+            <div className="w-24 h-24 rounded-full bg-secondary overflow-hidden flex items-center justify-center mb-3">
+              {avatarPreview ? (
+                <img
+                  src={
+                    avatarPreview
+                  }
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User size={32} />
+              )}
+            </div>
+
+            <label className="cursor-pointer text-sm text-primary font-medium">
+              Alterar foto
+
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                onChange={
+                  handleImage
+                }
+              />
+            </label>
+          </div>
+
+          {/* Bio */}
+          <label className="text-sm font-medium block mb-2">
+            Biografia
+          </label>
+
+          <textarea
+            rows={4}
+            value={bio}
+            onChange={(e) =>
+              setBio(
+                e.target.value
+              )
+            }
+            placeholder="Fale sobre você..."
+            className="
+              w-full rounded-2xl border border-border
+              bg-background p-3 resize-none
+              outline-none focus:ring-2 focus:ring-primary
+            "
+          />
+
+          {/* Actions */}
+          <div className="grid grid-cols-2 gap-2 mt-5">
+            <Button
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              onClick={onSave}
+              disabled={saving}
+            >
+              {saving
+                ? "Salvando..."
+                : "Salvar"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -507,7 +662,6 @@ function MenuButton({
 
 function ProfileTop({
   name,
-  email,
   bio,
   avatarPreview,
   totalCheckins,
@@ -560,12 +714,6 @@ function ProfileTop({
           {name}
         </p>
 
-        {email && (
-          <p className="text-sm text-muted-foreground">
-            {email}
-          </p>
-        )}
-
         <p className="text-sm mt-1">
           {bio}
         </p>
@@ -603,105 +751,6 @@ function Stat({
         {label}
       </p>
     </div>
-  );
-}
-
-/* ------------------------------------------------ */
-/* Edit Modal */
-/* ------------------------------------------------ */
-
-function EditProfileModal({
-  open,
-  onClose,
-  bio,
-  setBio,
-  avatarPreview,
-  setAvatarPreview,
-  onSave,
-  saving,
-}: EditProfileModalProps) {
-  if (!open) return null;
-
-  function handleImage(
-    e: ChangeEvent<HTMLInputElement>
-  ) {
-    const file =
-      e.target.files?.[0];
-
-    if (!file) return;
-
-    const url =
-      URL.createObjectURL(
-        file
-      );
-
-    setAvatarPreview(url);
-  }
-
-  return (
-    <>
-      <div
-        onClick={onClose}
-        className="absolute inset-0 bg-black/50 z-50"
-      />
-
-      <div className="absolute inset-x-4 top-20 bg-card border border-border rounded-2xl z-50 p-5 shadow-2xl">
-        <h2 className="font-bold text-lg mb-4">
-          Editar perfil
-        </h2>
-
-        <label className="block text-sm mb-2">
-          Foto
-        </label>
-
-        <label className="h-12 rounded-xl border border-border flex items-center justify-center gap-2 cursor-pointer mb-4">
-          <Camera size={16} />
-          Escolher imagem
-
-          <input
-            hidden
-            type="file"
-            accept="image/*"
-            onChange={
-              handleImage
-            }
-          />
-        </label>
-
-        <label className="block text-sm mb-2">
-          Bio
-        </label>
-
-        <textarea
-          rows={4}
-          value={bio}
-          onChange={(e) =>
-            setBio(
-              e.target.value
-            )
-          }
-          className="w-full rounded-xl border border-border bg-background p-3 resize-none"
-        />
-
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-          >
-            Cancelar
-          </Button>
-
-          <Button
-            onClick={onSave}
-            disabled={saving}
-          >
-            {saving
-              ? "Salvando..."
-              : "Salvar"}
-          </Button>
-        </div>
-      </div>
-    </>
   );
 }
 

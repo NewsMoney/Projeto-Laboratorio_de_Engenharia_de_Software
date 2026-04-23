@@ -3,9 +3,9 @@ import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", icon: MapPin, label: "Mapa" },
-  { href: "/search", icon: Search, label: "Buscar" },
   { href: "/checkin", icon: CheckCircle, label: "Check-in" },
+  { href: "/search", icon: Search, label: "Buscar" },
+  { href: "/", icon: MapPin, label: "Mapa" },
   { href: "/ranking", icon: Trophy, label: "Ranking" },
   { href: "/profile", icon: User, label: "Perfil" },
 ];
