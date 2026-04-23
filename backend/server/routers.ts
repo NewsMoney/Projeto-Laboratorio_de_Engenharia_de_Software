@@ -19,6 +19,7 @@ import {
   getUserById,
   registerUser,
   loginUser,
+  updateUserProfile,
 } from "./db";
 
 
@@ -200,8 +201,30 @@ export const appRouter = router({
       const user = await getUserById(ctx.user.id);
       const stats = await getUserStats(ctx.user.id);
       const recentCheckins = await getCheckinsByUser(ctx.user.id, 5);
-      return { user, stats, recentCheckins };
+    
+      return {
+        user,
+        stats,
+        recentCheckins,
+      };
     }),
+  
+    updateProfile: protectedProcedure
+      .input(
+        z.object({
+          bio: z.string(),
+          avatarUrl: z.string().nullable(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return updateUserProfile(
+          ctx.user.id,
+          {
+            bio: input.bio,
+            avatarUrl: input.avatarUrl,
+          }
+        );
+      }),
   }),
 });
 
