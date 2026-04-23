@@ -15,7 +15,7 @@ const placeIcon = L.divIcon({
   className: "joinme-marker",
   html: `<div style="
     width: 32px; height: 32px;
-    background: linear-gradient(135deg, #0d9488, #14b8a6);
+    background: linear-gradient(135deg, #d0dd1f, #14b8a6);
     border: 3px solid #fff;
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
@@ -99,19 +99,12 @@ export default function LeafletMap({
       {
         maxZoom: 19,
         subdomains: "abcd",
+        attribution: "",
       }
     ).addTo(map);
-
-    // Add zoom control to bottom-right
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-
-    // Add subtle attribution
-    L.control
-      .attribution({ position: "bottomleft", prefix: false })
-      .addAttribution(
-        '&copy; <a href="https://www.openstreetmap.org/copyright" style="color:#666">OSM</a> &copy; <a href="https://carto.com/" style="color:#666">CARTO</a>'
-      )
-      .addTo(map);
+    
+    // remove qualquer attribution residual
+    map.attributionControl?.remove();
 
     markersRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;

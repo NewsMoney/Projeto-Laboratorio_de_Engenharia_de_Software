@@ -1,6 +1,7 @@
 CREATE TABLE `users` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`name` text,
+	`dataNascimento` DATE,
 	`email` varchar(320),
 	`passwordHash` varchar(255),
 	`role` enum('user','admin') NOT NULL DEFAULT 'user',

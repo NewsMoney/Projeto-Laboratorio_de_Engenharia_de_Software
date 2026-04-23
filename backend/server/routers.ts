@@ -21,6 +21,37 @@ import {
   loginUser,
 } from "./db";
 
+import { z } from "zod";
+
+geocode: publicProcedure
+  .input(
+    z.object({
+      address: z.string().min(3),
+    })
+  )
+  .query(async ({ input }) => {
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(input.address)}`;
+
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "JoinMeApp/1.0",
+      },
+    });
+
+    const data = await res.json();
+
+    if (!data.length) {
+      throw new Error("Endereço não encontrado");
+    }
+
+    return {
+      lat: Number(data[0].lat),
+      lng: Number(data[0].lon),
+      displayName: data[0].display_name,
+    };
+}),
+
 export const appRouter = router({
   system: systemRouter,
 
