@@ -298,8 +298,10 @@ export async function getTopUsers(limit = 20) {
 
 export async function registerUser(data: {
   name: string;
+  username: string;
   email: string;
   password: string;
+  birthDate: string;
 }) {
   const db = await getDb();
 

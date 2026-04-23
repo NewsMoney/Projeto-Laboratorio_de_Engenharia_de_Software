@@ -1,227 +1,505 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
+
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { useLocation } from "wouter";
+
+import { Button } from "@/components/ui/button";
+
 import {
   ArrowLeft,
-  User,
-  MapPin,
-  Star,
-  CheckCircle,
-  MessageSquare,
-  LogOut,
+  Grid3X3,
   Loader2,
-  Clock,
+  LogOut,
+  Menu,
+  Settings,
+  Share2,
+  Shield,
+  User,
+  X,
+  Camera,
+  Pencil,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
 
 export default function Profile() {
-
   const [, setLocation] = useLocation();
+
   const { user, isAuthenticated, loading, logout } = useAuth();
 
-  const { data: profileData, isLoading: profileLoading } = trpc.user.profile.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const [bio, setBio] = useState(
+    "Explorando os melhores lugares da cidade."
   );
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
-    );
-  }
+  const [avatarPreview, setAvatarPreview] =
+    useState<string | null>(null);
+
+  const {
+    data: profileData,
+    isLoading: profileLoading,
+  } = trpc.user.profile.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  if (loading) return <PageLoader />;
 
   if (!isAuthenticated) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4 ring-2 ring-primary/20">
-          <User size={36} className="text-muted-foreground" />
-        </div>
-
-        <h2 className="text-lg font-bold text-foreground mb-1">
-          Entre para ver seu perfil
-        </h2>
-
-        <p className="text-sm text-muted-foreground mb-6 text-center">
-          Faça login para acompanhar seus check-ins
-        </p>
-
-        <Button
-          onClick={() => setLocation("/login")}
-        >
-          Entrar
-        </Button>
-      </div>
+      <GuestState
+        onLogin={() => setLocation("/login")}
+      />
     );
   }
 
   const stats = profileData?.stats;
-  const recentCheckins = profileData?.recentCheckins;
+  const recentCheckins =
+    profileData?.recentCheckins ?? [];
 
-  const level =
-    Number(stats?.totalCheckins ?? 0) >= 100
-      ? "Expert"
-      : Number(stats?.totalCheckins ?? 0) >= 50
-      ? "Avançado"
-      : Number(stats?.totalCheckins ?? 0) >= 10
-      ? "Intermediário"
-      : "Iniciante";
-
-  const levelColor =
-    level === "Expert"
-      ? "text-yellow-400"
-      : level === "Avançado"
-      ? "text-purple-400"
-      : level === "Intermediário"
-      ? "text-blue-400"
-      : "text-primary";
+  async function handleLogout() {
+    await logout();
+    setLocation("/");
+  }
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Header */}
-      <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3 lg:hidden">
-        <button
-          onClick={() => setLocation("/")}
-          className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-        >
-          <ArrowLeft size={18} className="text-foreground" />
-        </button>
-        <h1 className="text-base font-bold text-foreground">Perfil</h1>
-      </header>
+    <div className="flex-1 flex flex-col bg-background relative">
+      <ProfileHeader
+        username={user?.name || "perfil"}
+        onBack={() => setLocation("/")}
+        onMenu={() => setMenuOpen(true)}
+      />
+
+      <SideMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onLogout={handleLogout}
+      />
+
+      <EditProfileModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        bio={bio}
+        setBio={setBio}
+        avatarPreview={avatarPreview}
+        setAvatarPreview={setAvatarPreview}
+      />
 
       <div className="flex-1 overflow-y-auto">
-        {/* User info */}
-        <div className="p-4">
-          <div className="bg-card border border-border rounded-xl p-5 text-center">
-            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3 ring-2 ring-primary/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]">
-              <User size={32} className="text-primary" />
-            </div>
-            <h2 className="text-lg font-bold text-foreground">
-              {user?.name ?? "Usuário"}
+        <ProfileTop
+          name={user?.name || "Usuário"}
+          email={user?.email}
+          bio={bio}
+          avatarPreview={avatarPreview}
+          totalCheckins={Number(
+            stats?.totalCheckins ?? 0
+          )}
+          totalPlaces={Number(
+            stats?.uniquePlaces ?? 0
+          )}
+          totalFriends={0}
+          onEdit={() => setEditOpen(true)}
+        />
+
+        <CheckinsSection
+          loading={profileLoading}
+          checkins={recentCheckins}
+          onOpen={(placeId) =>
+            setLocation(`/details/${placeId}`)
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Loader ---------------- */
+
+function PageLoader() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <Loader2
+        className="animate-spin text-primary"
+        size={28}
+      />
+    </div>
+  );
+}
+
+/* ---------------- Guest ---------------- */
+
+function GuestState({
+  onLogin,
+}: {
+  onLogin: () => void;
+}) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-4">
+      <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-4">
+        <User size={34} />
+      </div>
+
+      <h2 className="text-lg font-bold">
+        Entre para ver seu perfil
+      </h2>
+
+      <Button className="mt-4" onClick={onLogin}>
+        Entrar
+      </Button>
+    </div>
+  );
+}
+
+/* ---------------- Header ---------------- */
+
+function ProfileHeader({
+  username,
+  onBack,
+  onMenu,
+}: {
+  username: string;
+  onBack: () => void;
+  onMenu: () => void;
+}) {
+  return (
+    <header className="px-4 py-3 border-b border-border flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack}>
+          <ArrowLeft size={20} />
+        </button>
+
+        <h1 className="font-bold text-base">
+          {username}
+        </h1>
+      </div>
+
+      <button onClick={onMenu}>
+        <Menu size={22} />
+      </button>
+    </header>
+  );
+}
+
+/* ---------------- Menu ---------------- */
+
+function SideMenu({
+  open,
+  onClose,
+  onLogout,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
+  async function handleShare() {
+    const url = window.location.origin + "/profile";
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Meu perfil JoinMe",
+          text: "Veja meu perfil no JoinMe",
+          url,
+        });
+      } catch {
+        /* cancelado */
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+    }
+
+    onClose();
+  }
+
+  return (
+    <>
+      {/* overlay */}
+      <div
+        className={`
+          absolute inset-0 bg-black/50 z-40 transition-opacity duration-300
+          ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
+        `}
+        onClick={onClose}
+      />
+
+      {/* wrapper corta sombra */}
+      <div className="absolute top-0 right-0 h-full w-72 overflow-hidden z-50 pointer-events-none">
+        <div
+          className={`
+            h-full w-full bg-card border-l border-border
+            transition-transform duration-300 ease-out
+            pointer-events-auto
+            ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}
+          `}
+        >
+          {/* topo */}
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h2 className="font-bold">
+              Menu
             </h2>
-            {user?.email && (
-              <p className="text-sm text-muted-foreground mt-0.5">{user.email}</p>
-            )}
 
-            {/* Stats grid */}
-            {profileLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="animate-spin text-primary" size={20} />
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-3 gap-3 mt-4">
-                  <div className="bg-secondary rounded-lg p-3">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <CheckCircle size={14} className="text-primary" />
-                      <span className="text-lg font-bold text-foreground">
-                        {Number(stats?.totalCheckins ?? 0)}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Check-ins</p>
-                  </div>
-                  <div className="bg-secondary rounded-lg p-3">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <MapPin size={14} className="text-primary" />
-                      <span className="text-lg font-bold text-foreground">
-                        {Number(stats?.uniquePlaces ?? 0)}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Locais</p>
-                  </div>
-                  <div className="bg-secondary rounded-lg p-3">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <MessageSquare size={14} className="text-primary" />
-                      <span className="text-lg font-bold text-foreground">
-                        {Number(stats?.totalReviews ?? 0)}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Avaliações</p>
-                  </div>
-                </div>
+            <button onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
 
-                {/* Level badge */}
-                <div className="mt-3 bg-accent border border-primary/20 rounded-lg p-2.5">
-                  <p className={`text-xs font-semibold ${levelColor}`}>
-                    Nível: {level}
-                  </p>
-                </div>
-              </>
-            )}
+          {/* itens */}
+          <div className="p-2 space-y-1">
+            <MenuButton icon={<Settings size={18} />}>
+              Configurações
+            </MenuButton>
+
+            <MenuButton
+              icon={<Share2 size={18} />}
+              onClick={handleShare}
+            >
+              Compartilhar perfil
+            </MenuButton>
+
+            <MenuButton icon={<Shield size={18} />}>
+              Privacidade
+            </MenuButton>
+
+            <MenuButton
+              danger
+              icon={<LogOut size={18} />}
+              onClick={onLogout}
+            >
+              Sair
+            </MenuButton>
           </div>
         </div>
+      </div>
+    </>
+  );
+}
 
-        {/* Recent check-ins */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Check-ins Recentes</h3>
-          {profileLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="animate-spin text-primary" size={20} />
-            </div>
-          ) : !recentCheckins || recentCheckins.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <CheckCircle size={24} className="text-muted-foreground" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Nenhum check-in ainda. Explore o mapa!
-              </p>
-            </div>
+function MenuButton({
+  children,
+  icon,
+  danger,
+  onClick,
+}: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        w-full h-11 px-3 rounded-xl flex items-center gap-3 text-sm text-left
+        hover:bg-secondary
+        ${danger ? "text-destructive hover:bg-destructive/10" : ""}
+      `}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+/* ---------------- Top ---------------- */
+
+function ProfileTop({
+  name,
+  email,
+  bio,
+  avatarPreview,
+  totalCheckins,
+  totalPlaces,
+  totalFriends,
+  onEdit,
+}: any) {
+  return (
+    <div className="px-4 pt-5">
+      <div className="flex gap-5">
+        <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+          {avatarPreview ? (
+            <img
+              src={avatarPreview}
+              className="w-full h-full object-cover"
+            />
           ) : (
-            <div className="space-y-2">
-              {recentCheckins.map((ci) => (
-                <button
-                  key={ci.id}
-                  onClick={() => setLocation(`/details/${ci.placeId}`)}
-                  className="w-full bg-card border border-border rounded-xl p-3 flex items-center justify-between hover:bg-secondary/50 transition-colors text-left"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {ci.placeName ?? "Local"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Clock size={10} />
-                        {new Date(ci.createdAt).toLocaleDateString("pt-BR")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-0.5 ml-2">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        size={12}
-                        className={
-                          s <= ci.rating
-                            ? "text-yellow-500 fill-yellow-500"
-                            : "text-muted-foreground/20"
-                        }
-                      />
-                    ))}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <User
+              size={34}
+              className="text-primary"
+            />
           )}
         </div>
 
-        {/* Logout */}
-        <div className="px-4 pb-6">
+        <div className="flex-1 flex items-center justify-around">
+          <Stat value={totalCheckins} label="checkins" />
+          <Stat value={totalPlaces} label="locais" />
+          <Stat value={totalFriends} label="amigos" />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="font-semibold text-sm">
+          {name}
+        </p>
+
+        {email && (
+          <p className="text-sm text-muted-foreground">
+            {email}
+          </p>
+        )}
+
+        <p className="text-sm mt-1">{bio}</p>
+      </div>
+
+      <div className="mt-4">
+        <Button
+          variant="outline"
+          className="w-full h-10"
+          onClick={onEdit}
+        >
+          <Pencil size={14} className="mr-2" />
+          Editar perfil
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="text-center">
+      <p className="font-bold text-lg">
+        {value}
+      </p>
+
+      <p className="text-xs text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+/* ---------------- Editar Perfil ---------------- */
+
+function EditProfileModal({
+  open,
+  onClose,
+  bio,
+  setBio,
+  avatarPreview,
+  setAvatarPreview,
+}: any) {
+  if (!open) return null;
+
+  function handleImage(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    setAvatarPreview(url);
+  }
+
+  return (
+    <>
+      <div
+        className="absolute inset-0 bg-black/50 z-50"
+        onClick={onClose}
+      />
+
+      <div className="absolute inset-x-4 top-20 bg-card border border-border rounded-2xl z-50 p-5 shadow-2xl">
+        <h2 className="font-bold text-lg mb-4">
+          Editar perfil
+        </h2>
+
+        <label className="block text-sm mb-2">
+          Foto
+        </label>
+
+        <label className="h-12 rounded-xl border border-border flex items-center justify-center gap-2 cursor-pointer mb-4">
+          <Camera size={16} />
+          Escolher imagem
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={handleImage}
+          />
+        </label>
+
+        <label className="block text-sm mb-2">
+          Bio
+        </label>
+
+        <textarea
+          value={bio}
+          onChange={(e) =>
+            setBio(e.target.value)
+          }
+          rows={4}
+          className="w-full rounded-xl border border-border bg-background p-3 resize-none"
+        />
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
           <Button
             variant="outline"
-            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={async () => {
-              await logout();
-              setLocation("/");
-            }}
+            onClick={onClose}
           >
-            <LogOut size={16} className="mr-2" />
-            Sair
+            Cancelar
+          </Button>
+
+          <Button onClick={onClose}>
+            Salvar
           </Button>
         </div>
       </div>
+    </>
+  );
+}
+
+/* ---------------- Checkins ---------------- */
+
+function CheckinsSection({
+  loading,
+  checkins,
+  onOpen,
+}: any) {
+  return (
+    <div className="mt-6 border-t border-border">
+      <div className="h-12 flex items-center justify-center border-b border-border">
+        <Grid3X3 size={18} />
+      </div>
+
+      {loading ? (
+        <div className="py-10 flex justify-center">
+          <Loader2 className="animate-spin text-primary" />
+        </div>
+      ) : checkins.length === 0 ? (
+        <div className="p-6 text-center text-sm text-muted-foreground">
+          Nenhum check-in ainda.
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-[2px] bg-border">
+          {checkins.map((item: any) => (
+            <button
+              key={item.id}
+              onClick={() =>
+                onOpen(item.placeId)
+              }
+              className="aspect-square bg-card flex flex-col items-center justify-center p-2 hover:bg-secondary transition-colors"
+            >
+              <p className="text-[11px] font-semibold text-center line-clamp-2">
+                {item.placeName}
+              </p>
+
+              <p className="text-[10px] text-muted-foreground mt-1">
+                ⭐ {item.rating}/5
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

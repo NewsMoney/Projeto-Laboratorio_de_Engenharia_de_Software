@@ -1,5 +1,6 @@
 CREATE TABLE `users` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`username` text,
 	`name` text,
 	`dataNascimento` DATE,
 	`email` varchar(320),

@@ -21,56 +21,30 @@ import {
   loginUser,
 } from "./db";
 
-import { z } from "zod";
-
-geocode: publicProcedure
-  .input(
-    z.object({
-      address: z.string().min(3),
-    })
-  )
-  .query(async ({ input }) => {
-    const url =
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(input.address)}`;
-
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "JoinMeApp/1.0",
-      },
-    });
-
-    const data = await res.json();
-
-    if (!data.length) {
-      throw new Error("Endereço não encontrado");
-    }
-
-    return {
-      lat: Number(data[0].lat),
-      lng: Number(data[0].lon),
-      displayName: data[0].display_name,
-    };
-}),
 
 export const appRouter = router({
   system: systemRouter,
 
-    auth: router({
+  auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
 
     register: publicProcedure
       .input(
         z.object({
           name: z.string().min(2),
+          username: z.string().min(3).max(30),
           email: z.string().email(),
           password: z.string().min(4),
+          birthDate: z.string(),
         })
       )
       .mutation(async ({ input }) => {
         return registerUser({
           name: input.name,
+          username: input.username,
           email: input.email,
           password: input.password,
+          birthDate: input.birthDate,
         });
       }),
 
@@ -93,15 +67,15 @@ export const appRouter = router({
           email: input.email,
           password: input.password,
         });
-      
+
         const cookieOptions = getSessionCookieOptions(ctx.req);
-      
+
         ctx.res.cookie(
           COOKIE_NAME,
           String(user.id),
           cookieOptions
         );
-      
+
         return user;
       }),
 
@@ -113,7 +87,7 @@ export const appRouter = router({
         secure: false, // localhost
         expires: new Date(0),
       });
-    
+
       return { success: true };
     }),
   }),
