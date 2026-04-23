@@ -334,20 +334,41 @@ function GuestState({
   onLogin: () => void;
 }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4">
-      <User size={40} />
+    <div
+      className="flex-1 flex flex-col items-center justify-center px-4"
+      style={{
+        background: theme.colors.background,
+        color: theme.colors.text,
+      }}
+    >
+      <div
+        className="w-20 h-20 rounded-full flex items-center justify-center"
+        style={{
+          background: theme.colors.surface,
+          border: `1px solid ${theme.colors.border}`,
+        }}
+      >
+        <User size={40} />
+      </div>
 
-      <h2 className="font-bold mt-4">
+      <h2 className="font-bold mt-4 text-center">
         Faça login para ver seu perfil
       </h2>
 
-      <Button
-        className="mt-4"
+      <p
+        className="text-sm mt-2 text-center"
         style={{
-          background:
-            theme.colors.primary,
-          color:
-            theme.colors.background,
+          color: theme.colors.textMuted,
+        }}
+      >
+        Entre para acessar seu perfil, check-ins e configurações.
+      </p>
+
+      <Button
+        className="mt-5"
+        style={{
+          background: theme.colors.primary,
+          color: theme.colors.background,
         }}
         onClick={onLogin}
       >
@@ -443,9 +464,13 @@ function SideMenu({
 
   return (
     <>
+      {/* 
+          Overlay - z-index aumentado para 9998 
+          Garante que cubra a barra de navegação inferior e outros elementos fixos.
+      */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[9998] transition-opacity duration-300 ${
           open
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
@@ -456,8 +481,12 @@ function SideMenu({
         }}
       />
 
+      {/* 
+          Sidebar - z-index aumentado para 9999 
+          O valor mais alto possível para garantir que fique no topo de tudo.
+      */}
       <aside
-        className={`fixed top-0 right-0 h-screen w-72 z-50 transition-transform duration-300 ${
+        className={`fixed top-0 right-0 h-screen w-72 z-[9999] transition-transform duration-300 ${
           open
             ? "translate-x-0"
             : "translate-x-full"
@@ -531,7 +560,7 @@ function SideMenu({
             <MenuButton
               danger
               icon={
-                <LogOut size={18} />
+                <LogOut size={18} color="#ef4444" />
               }
               onClick={
                 onLogout
@@ -545,6 +574,7 @@ function SideMenu({
     </>
   );
 }
+
 
 /* ------------------------------------------------ */
 /* Menu Button */
