@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 
 import { trpc } from "@/lib/trpc";
+import { theme } from "@/lib/theme";
+
 import { Button } from "@/components/ui/button";
 
 import { toast } from "sonner";
@@ -11,26 +13,34 @@ import {
   EyeOff,
 } from "lucide-react";
 
+/* ================================================== */
+/* REGISTER */
+/* ================================================== */
+
 export default function Register() {
   const [, setLocation] =
     useLocation();
 
-  /* ---------------- State ---------------- */
-
   const [name, setName] =
     useState("");
 
-  const [username, setUsername] =
-    useState("");
+  const [
+    username,
+    setUsername,
+  ] = useState("");
 
   const [email, setEmail] =
     useState("");
 
-  const [password, setPassword] =
-    useState("");
+  const [
+    password,
+    setPassword,
+  ] = useState("");
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [
+    showPassword,
+    setShowPassword,
+  ] = useState(false);
 
   const [day, setDay] =
     useState("");
@@ -41,27 +51,33 @@ export default function Register() {
   const [year, setYear] =
     useState("");
 
-  /* ---------------- Mutation ---------------- */
-
   const registerMutation =
-    trpc.auth.register.useMutation({
-      onSuccess: () => {
-        toast.success(
-          "Conta criada com sucesso"
-        );
+    trpc.auth.register.useMutation(
+      {
+        onSuccess: () => {
+          toast.success(
+            "Conta criada com sucesso"
+          );
 
-        setLocation("/login");
-      },
+          setLocation(
+            "/login"
+          );
+        },
 
-      onError: (err) => {
-        toast.error(
-          err.message ||
-            "Erro ao registrar"
-        );
-      },
-    });
+        onError: (
+          err
+        ) => {
+          toast.error(
+            err.message ||
+              "Erro ao registrar"
+          );
+        },
+      }
+    );
 
-  /* ---------------- Submit ---------------- */
+  /* ---------------------------------- */
+  /* SUBMIT */
+  /* ---------------------------------- */
 
   function handleRegister(
     e: React.FormEvent
@@ -95,20 +111,39 @@ export default function Register() {
 
     registerMutation.mutate({
       name: name.trim(),
-      username: username.trim(),
-      email: email.trim(),
+      username:
+        username.trim(),
+      email:
+        email.trim(),
       password,
       birthDate,
     });
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-8"
+      style={{
+        background:
+          theme.colors.background,
+        color:
+          theme.colors.text,
+      }}
+    >
       <div className="w-full max-w-md">
-
         <RegisterHeader />
 
-        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
+        <div
+          className="rounded-3xl border p-6"
+          style={{
+            background:
+              theme.colors.surface,
+            borderColor:
+              theme.colors.border,
+            boxShadow:
+              theme.shadow.card,
+          }}
+        >
           <form
             onSubmit={
               handleRegister
@@ -117,11 +152,15 @@ export default function Register() {
           >
             <NameField
               value={name}
-              onChange={setName}
+              onChange={
+                setName
+              }
             />
 
             <UsernameField
-              value={username}
+              value={
+                username
+              }
               onChange={
                 setUsername
               }
@@ -129,11 +168,15 @@ export default function Register() {
 
             <EmailField
               value={email}
-              onChange={setEmail}
+              onChange={
+                setEmail
+              }
             />
 
             <PasswordField
-              value={password}
+              value={
+                password
+              }
               onChange={
                 setPassword
               }
@@ -147,11 +190,19 @@ export default function Register() {
 
             <BirthDateFields
               day={day}
-              month={month}
+              month={
+                month
+              }
               year={year}
-              setDay={setDay}
-              setMonth={setMonth}
-              setYear={setYear}
+              setDay={
+                setDay
+              }
+              setMonth={
+                setMonth
+              }
+              setYear={
+                setYear
+              }
             />
 
             <RegisterButton
@@ -169,33 +220,46 @@ export default function Register() {
             />
           </form>
         </div>
-
       </div>
     </div>
   );
 }
 
-/* -------------------------------- */
-/* Header */
-/* -------------------------------- */
+/* ================================================== */
+/* HEADER */
+/* ================================================== */
 
 function RegisterHeader() {
   return (
     <div className="text-center mb-8">
-      <h1 className="text-3xl font-bold text-foreground">
-        JoinMe
+      <h1 className="text-3xl font-bold">
+        Join
+        <span
+          style={{
+            color:
+              theme.colors.primary,
+          }}
+        >
+          Me
+        </span>
       </h1>
 
-      <p className="text-sm text-muted-foreground mt-2">
+      <p
+        className="text-sm mt-2"
+        style={{
+          color:
+            theme.colors.textMuted,
+        }}
+      >
         Crie sua conta
       </p>
     </div>
   );
 }
 
-/* -------------------------------- */
-/* Campos */
-/* -------------------------------- */
+/* ================================================== */
+/* FIELDS */
+/* ================================================== */
 
 function NameField({
   value,
@@ -233,13 +297,19 @@ function EmailField({
     <div>
       <InputField
         label="Email"
-        placeholder="ex: exemplo@gmail.com"
         type="email"
+        placeholder="ex: exemplo@gmail.com"
         value={value}
         onChange={onChange}
       />
 
-      <p className="text-xs text-muted-foreground mt-2">
+      <p
+        className="text-xs mt-2"
+        style={{
+          color:
+            theme.colors.textMuted,
+        }}
+      >
         Você poderá receber notificações enviadas por nós.
       </p>
     </div>
@@ -284,15 +354,23 @@ function PasswordField({
               !showPassword
             )
           }
-          className="absolute right-4 top-4 text-muted-foreground"
+          className="absolute right-4 top-1/2 -translate-y-1/2"
         >
           {showPassword ? (
             <EyeOff
               size={18}
+              style={{
+                color:
+                  theme.colors.textMuted,
+              }}
             />
           ) : (
             <Eye
               size={18}
+              style={{
+                color:
+                  theme.colors.textMuted,
+              }}
             />
           )}
         </button>
@@ -301,9 +379,9 @@ function PasswordField({
   );
 }
 
-/* -------------------------------- */
-/* Data nascimento */
-/* -------------------------------- */
+/* ================================================== */
+/* BIRTH DATE */
+/* ================================================== */
 
 function BirthDateFields({
   day,
@@ -343,9 +421,13 @@ function BirthDateFields({
             { length: 31 },
             (_, i) => ({
               value:
-                String(i + 1),
+                String(
+                  i + 1
+                ),
               label:
-                String(i + 1),
+                String(
+                  i + 1
+                ),
             })
           )}
         />
@@ -358,7 +440,7 @@ function BirthDateFields({
           placeholder="Mês"
           options={months.map(
             (
-              month,
+              item,
               index
             ) => ({
               value:
@@ -366,24 +448,28 @@ function BirthDateFields({
                   index + 1
                 ),
               label:
-                month,
+                item,
             })
           )}
         />
 
         <SelectField
           value={year}
-          onChange={setYear}
+          onChange={
+            setYear
+          }
           placeholder="Ano"
           options={Array.from(
             { length: 80 },
             (_, i) => ({
-              value: String(
-                2026 - i
-              ),
-              label: String(
-                2026 - i
-              ),
+              value:
+                String(
+                  2026 - i
+                ),
+              label:
+                String(
+                  2026 - i
+                ),
             })
           )}
         />
@@ -392,9 +478,9 @@ function BirthDateFields({
   );
 }
 
-/* -------------------------------- */
-/* Reutilizáveis */
-/* -------------------------------- */
+/* ================================================== */
+/* REUSABLE */
+/* ================================================== */
 
 function InputField({
   label,
@@ -468,8 +554,24 @@ function RegisterButton({
   return (
     <Button
       type="submit"
-      className="w-full h-12 rounded-2xl"
       disabled={loading}
+      className="w-full h-12 rounded-2xl font-semibold"
+      style={{
+        background:
+          loading
+            ? theme.colors.border
+            : theme.colors.primary,
+
+        color:
+          loading
+            ? theme.colors.textMuted
+            : theme.colors.background,
+
+        boxShadow:
+          loading
+            ? "none"
+            : theme.shadow.neon,
+      }}
     >
       {loading
         ? "Registrando..."
@@ -487,38 +589,32 @@ function LoginLink({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-sm text-primary"
+      className="w-full text-sm"
+      style={{
+        color:
+          theme.colors.primary,
+      }}
     >
-      Já possui conta?
-      Entrar
+      Já possui conta? Entrar
     </button>
   );
 }
 
-/* -------------------------------- */
-/* Styles */
-/* -------------------------------- */
+/* ================================================== */
+/* STYLES */
+/* ================================================== */
 
 function inputClass(
   extra = ""
 ) {
   return `
-    w-full h-14 px-4 rounded-2xl
-    border border-border
-    bg-background
-    text-foreground
-    outline-none
-    focus:ring-2 focus:ring-primary
+    w-full h-14 px-4 rounded-2xl border outline-none
     ${extra}
   `;
 }
 
 function selectClass() {
   return `
-    w-full h-14 px-4 rounded-2xl
-    border border-border
-    bg-background
-    text-foreground
-    outline-none
+    w-full h-14 px-4 rounded-2xl border outline-none
   `;
 }

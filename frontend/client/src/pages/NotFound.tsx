@@ -1,25 +1,95 @@
 import { Button } from "@/components/ui/button";
-import { MapPin, Home } from "lucide-react";
 import { useLocation } from "wouter";
 
+import { theme } from "@/lib/theme";
+
+import {
+  MapPin,
+  Home,
+} from "lucide-react";
+
+/* ================================================== */
+/* NOT FOUND */
+/* ================================================== */
+
 export default function NotFound() {
-  const [, setLocation] = useLocation();
+  const [, setLocation] =
+    useLocation();
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4">
-      <div className="text-center max-w-sm">
-        <div className="w-16 h-16 bg-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <MapPin size={32} className="text-muted-foreground" />
+    <div
+      className="flex-1 min-h-screen flex items-center justify-center px-4"
+      style={{
+        background:
+          theme.colors.background,
+        color:
+          theme.colors.text,
+      }}
+    >
+      <div className="text-center max-w-sm w-full">
+        {/* ICON */}
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{
+            background:
+              theme.colors.surface,
+            border: `1px solid ${theme.colors.border}`,
+          }}
+        >
+          <MapPin
+            size={30}
+            style={{
+              color:
+                theme.colors.textMuted,
+            }}
+          />
         </div>
-        <h1 className="text-5xl font-bold text-primary mb-2">404</h1>
-        <h2 className="text-lg font-semibold text-foreground mb-2">
+
+        {/* TITLE */}
+        <h1
+          className="text-5xl font-bold mb-2"
+          style={{
+            color:
+              theme.colors.primary,
+          }}
+        >
+          404
+        </h1>
+
+        <h2 className="text-lg font-semibold mb-2">
           Página não encontrada
         </h2>
-        <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-          A página que você procura não existe ou foi removida.
+
+        <p
+          className="text-sm mb-6 leading-relaxed"
+          style={{
+            color:
+              theme.colors.textMuted,
+          }}
+        >
+          A página que você procura não existe
+          ou foi removida.
         </p>
-        <Button onClick={() => setLocation("/")}>
-          <Home size={16} className="mr-2" />
+
+        {/* CTA */}
+        <Button
+          onClick={() =>
+            setLocation("/")
+          }
+          className="h-12 px-6 rounded-xl font-semibold"
+          style={{
+            background:
+              theme.colors.primary,
+            color:
+              theme.colors.background,
+            boxShadow:
+              theme.shadow.neon,
+          }}
+        >
+          <Home
+            size={16}
+            className="mr-2"
+          />
           Voltar ao mapa
         </Button>
       </div>

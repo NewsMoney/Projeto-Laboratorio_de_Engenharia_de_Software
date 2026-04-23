@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { theme } from "@/lib/theme";
 
 import { Button } from "@/components/ui/button";
 
@@ -49,7 +50,6 @@ type MenuButtonProps = {
 
 type ProfileTopProps = {
   name: string;
-  email?: string | null;
   bio: string;
   avatarPreview: string | null;
   totalCheckins: number;
@@ -62,7 +62,9 @@ type EditProfileModalProps = {
   open: boolean;
   onClose: () => void;
   bio: string;
-  setBio: Dispatch<SetStateAction<string>>;
+  setBio: Dispatch<
+    SetStateAction<string>
+  >;
   avatarPreview: string | null;
   setAvatarPreview: Dispatch<
     SetStateAction<string | null>
@@ -74,7 +76,9 @@ type EditProfileModalProps = {
 type CheckinsSectionProps = {
   loading: boolean;
   checkins: CheckinItem[];
-  onOpen: (placeId: number) => void;
+  onOpen: (
+    placeId: number
+  ) => void;
 };
 
 /* ------------------------------------------------ */
@@ -92,7 +96,8 @@ export default function Profile() {
     logout,
   } = useAuth();
 
-  const utils = trpc.useUtils();
+  const utils =
+    trpc.useUtils();
 
   const [menuOpen, setMenuOpen] =
     useState(false);
@@ -113,25 +118,30 @@ export default function Profile() {
   const {
     data: profileData,
     isLoading: profileLoading,
-    refetch,
-  } = trpc.user.profile.useQuery(
-    undefined,
-    {
-      enabled: isAuthenticated,
-      refetchOnMount: "always",
-      refetchOnWindowFocus: true,
-    }
-  );
-  
-  useEffect(() => {
-    if (!profileData?.user) return;
-  
-    setBio(
-      profileData.user.bio ?? ""
+  } =
+    trpc.user.profile.useQuery(
+      undefined,
+      {
+        enabled:
+          isAuthenticated,
+      }
     );
-  
+
+  useEffect(() => {
+    if (
+      !profileData?.user
+    )
+      return;
+
+    setBio(
+      profileData.user.bio ??
+        ""
+    );
+
     setAvatarPreview(
-      profileData.user.avatarUrl ?? null
+      profileData.user
+        .avatarUrl ??
+        null
     );
   }, [profileData]);
 
@@ -160,9 +170,8 @@ export default function Profile() {
       }
     );
 
-  if (loading) {
+  if (loading)
     return <PageLoader />;
-  }
 
   if (!isAuthenticated) {
     return (
@@ -189,15 +198,25 @@ export default function Profile() {
   }
 
   function handleSaveProfile() {
-    updateProfileMutation.mutate({
-      bio,
-      avatarUrl:
-        avatarPreview,
-    });
+    updateProfileMutation.mutate(
+      {
+        bio,
+        avatarUrl:
+          avatarPreview,
+      }
+    );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background relative overflow-x-hidden">
+    <div
+      className="flex-1 flex flex-col relative overflow-hidden"
+      style={{
+        background:
+          theme.colors.background,
+        color:
+          theme.colors.text,
+      }}
+    >
       <ProfileHeader
         username={
           user?.username ||
@@ -249,7 +268,6 @@ export default function Profile() {
             user?.name ||
             "Usuário"
           }
-          email={user?.email}
           bio={bio}
           avatarPreview={
             avatarPreview
@@ -295,7 +313,13 @@ export default function Profile() {
 function PageLoader() {
   return (
     <div className="flex-1 flex items-center justify-center">
-      <Loader2 className="animate-spin text-primary" />
+      <Loader2
+        className="animate-spin"
+        style={{
+          color:
+            theme.colors.primary,
+        }}
+      />
     </div>
   );
 }
@@ -319,6 +343,12 @@ function GuestState({
 
       <Button
         className="mt-4"
+        style={{
+          background:
+            theme.colors.primary,
+          color:
+            theme.colors.background,
+        }}
         onClick={onLogin}
       >
         Entrar
@@ -341,10 +371,22 @@ function ProfileHeader({
   onMenu: () => void;
 }) {
   return (
-    <header className="px-4 py-3 border-b border-border flex items-center justify-between">
+    <header
+      className="px-4 py-3 border-b flex items-center justify-between"
+      style={{
+        borderColor:
+          theme.colors.border,
+        background:
+          theme.colors.surface,
+      }}
+    >
       <div className="flex items-center gap-3">
-        <button onClick={onBack}>
-          <ArrowLeft size={20} />
+        <button
+          onClick={onBack}
+        >
+          <ArrowLeft
+            size={20}
+          />
         </button>
 
         <h1 className="font-bold">
@@ -352,16 +394,18 @@ function ProfileHeader({
         </h1>
       </div>
 
-      <button onClick={onMenu}>
+      <button
+        onClick={onMenu}
+      >
         <Menu size={22} />
       </button>
     </header>
   );
 }
 
-/* ------------------------------------------------- */
+/* ------------------------------------------------ */
 /* Side Menu */
-/* ------------------------------------------------- */
+/* ------------------------------------------------ */
 
 function SideMenu({
   open,
@@ -374,16 +418,19 @@ function SideMenu({
 }) {
   async function handleShare() {
     const url =
-      window.location.origin +
+      window.location
+        .origin +
       "/profile";
 
     if (navigator.share) {
       try {
-        await navigator.share({
-          title:
-            "Meu perfil JoinMe",
-          url,
-        });
+        await navigator.share(
+          {
+            title:
+              "Meu perfil JoinMe",
+            url,
+          }
+        );
       } catch {}
     } else {
       await navigator.clipboard.writeText(
@@ -396,45 +443,52 @@ function SideMenu({
 
   return (
     <>
-      {/* overlay */}
       <div
         onClick={onClose}
-        className={`
-          fixed inset-0 z-40 bg-black/50
-          transition-opacity duration-300
-          ${
-            open
-              ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none"
-          }
-        `}
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+          open
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+        style={{
+          background:
+            "rgba(0,0,0,0.5)",
+        }}
       />
 
-      {/* panel */}
       <aside
-        className={`
-          fixed top-0 right-0 h-screen w-72 z-50
-          bg-card border-l border-border
-          transition-transform duration-300 ease-out
-          will-change-transform
-          ${
-            open
-              ? "translate-x-0"
-              : "translate-x-full"
-          }
-        `}
+        className={`fixed top-0 right-0 h-screen w-72 z-50 transition-transform duration-300 ${
+          open
+            ? "translate-x-0"
+            : "translate-x-full"
+        }`}
+        style={{
+          background:
+            theme.colors.surface,
+          borderLeft: `1px solid ${theme.colors.border}`,
+        }}
       >
         <div className="h-full flex flex-col">
-          <div className="h-14 px-4 border-b border-border flex items-center justify-between">
+          <div
+            className="h-14 px-4 border-b flex items-center justify-between"
+            style={{
+              borderColor:
+                theme.colors.border,
+            }}
+          >
             <h2 className="font-bold">
               Menu
             </h2>
 
             <button
-              onClick={onClose}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary"
+              onClick={
+                onClose
+              }
+              className="w-10 h-10 rounded-full flex items-center justify-center"
             >
-              <X size={18} />
+              <X
+                size={18}
+              />
             </button>
           </div>
 
@@ -467,7 +521,13 @@ function SideMenu({
             </MenuButton>
           </div>
 
-          <div className="mt-auto p-2 border-t border-border">
+          <div
+            className="mt-auto p-2 border-t"
+            style={{
+              borderColor:
+                theme.colors.border,
+            }}
+          >
             <MenuButton
               danger
               icon={
@@ -486,9 +546,9 @@ function SideMenu({
   );
 }
 
-/* ------------------------------------------------- */
+/* ------------------------------------------------ */
 /* Menu Button */
-/* ------------------------------------------------- */
+/* ------------------------------------------------ */
 
 function MenuButton({
   children,
@@ -499,26 +559,14 @@ function MenuButton({
   return (
     <button
       onClick={onClick}
-      className={`
-        w-full min-h-[46px]
-        px-3 rounded-xl
-        flex items-center gap-3
-        text-sm text-left
-        transition-colors
-        hover:bg-secondary
-        active:scale-[0.99]
-
-        ${
-          danger
-            ? "text-destructive hover:bg-destructive/10"
-            : ""
-        }
-      `}
+      className="w-full min-h-[46px] px-3 rounded-xl flex items-center gap-3 text-sm text-left"
+      style={{
+        color: danger
+          ? theme.colors.danger
+          : theme.colors.text,
+      }}
     >
-      <span className="shrink-0">
-        {icon}
-      </span>
-
+      {icon}
       <span>
         {children}
       </span>
@@ -526,9 +574,9 @@ function MenuButton({
   );
 }
 
-/* ------------------------------------------------- */
-/* Edit Profile Modal */
-/* ------------------------------------------------- */
+/* ------------------------------------------------ */
+/* Edit Modal */
+/* ------------------------------------------------ */
 
 function EditProfileModal({
   open,
@@ -540,13 +588,15 @@ function EditProfileModal({
   onSave,
   saving,
 }: EditProfileModalProps) {
-  if (!open) return null;
+  if (!open)
+    return null;
 
   function handleImage(
     e: ChangeEvent<HTMLInputElement>
   ) {
     const file =
-      e.target.files?.[0];
+      e.target
+        .files?.[0];
 
     if (!file) return;
 
@@ -555,36 +605,58 @@ function EditProfileModal({
         file
       );
 
-    setAvatarPreview(url);
+    setAvatarPreview(
+      url
+    );
   }
 
   return (
     <>
-      {/* backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[60]"
+        style={{
+          background:
+            "rgba(0,0,0,0.5)",
+        }}
       />
 
-      {/* modal */}
       <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[70]">
-        <div className="bg-card border border-border rounded-3xl shadow-2xl p-5 max-w-md mx-auto">
+        <div
+          className="max-w-md mx-auto rounded-3xl border p-5"
+          style={{
+            background:
+              theme.colors.surface,
+            borderColor:
+              theme.colors.border,
+            boxShadow:
+              theme.shadow.card,
+          }}
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg">
               Editar perfil
             </h2>
 
             <button
-              onClick={onClose}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary"
+              onClick={
+                onClose
+              }
             >
-              <X size={18} />
+              <X
+                size={18}
+              />
             </button>
           </div>
 
-          {/* Avatar */}
           <div className="flex flex-col items-center mb-5">
-            <div className="w-24 h-24 rounded-full bg-secondary overflow-hidden flex items-center justify-center mb-3">
+            <div
+              className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center mb-3"
+              style={{
+                background:
+                  theme.colors.surfaceSoft,
+              }}
+            >
               {avatarPreview ? (
                 <img
                   src={
@@ -593,11 +665,19 @@ function EditProfileModal({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <User size={32} />
+                <User
+                  size={32}
+                />
               )}
             </div>
 
-            <label className="cursor-pointer text-sm text-primary font-medium">
+            <label
+              className="cursor-pointer text-sm font-medium"
+              style={{
+                color:
+                  theme.colors.primary,
+              }}
+            >
               Alterar foto
 
               <input
@@ -611,39 +691,50 @@ function EditProfileModal({
             </label>
           </div>
 
-          {/* Bio */}
-          <label className="text-sm font-medium block mb-2">
-            Biografia
-          </label>
-
           <textarea
             rows={4}
             value={bio}
-            onChange={(e) =>
+            onChange={(
+              e
+            ) =>
               setBio(
-                e.target.value
+                e.target
+                  .value
               )
             }
             placeholder="Fale sobre você..."
-            className="
-              w-full rounded-2xl border border-border
-              bg-background p-3 resize-none
-              outline-none focus:ring-2 focus:ring-primary
-            "
+            className="w-full rounded-2xl p-3 resize-none outline-none border"
+            style={{
+              background:
+                theme.colors.surfaceSoft,
+              borderColor:
+                theme.colors.border,
+            }}
           />
 
-          {/* Actions */}
           <div className="grid grid-cols-2 gap-2 mt-5">
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
             >
               Cancelar
             </Button>
 
             <Button
-              onClick={onSave}
-              disabled={saving}
+              onClick={
+                onSave
+              }
+              disabled={
+                saving
+              }
+              style={{
+                background:
+                  theme.colors.primary,
+                color:
+                  theme.colors.background,
+              }}
             >
               {saving
                 ? "Salvando..."
@@ -672,7 +763,13 @@ function ProfileTop({
   return (
     <div className="px-4 pt-5">
       <div className="flex gap-5">
-        <div className="w-24 h-24 rounded-full bg-secondary overflow-hidden flex items-center justify-center">
+        <div
+          className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center"
+          style={{
+            background:
+              theme.colors.surfaceSoft,
+          }}
+        >
           {avatarPreview ? (
             <img
               src={
@@ -681,7 +778,9 @@ function ProfileTop({
               className="w-full h-full object-cover"
             />
           ) : (
-            <User size={34} />
+            <User
+              size={34}
+            />
           )}
         </div>
 
@@ -714,7 +813,13 @@ function ProfileTop({
           {name}
         </p>
 
-        <p className="text-sm mt-1">
+        <p
+          className="text-sm mt-1"
+          style={{
+            color:
+              theme.colors.textMuted,
+          }}
+        >
           {bio}
         </p>
       </div>
@@ -747,7 +852,13 @@ function Stat({
         {value}
       </p>
 
-      <p className="text-xs text-muted-foreground">
+      <p
+        className="text-xs"
+        style={{
+          color:
+            theme.colors.textMuted,
+        }}
+      >
         {label}
       </p>
     </div>
@@ -764,22 +875,54 @@ function CheckinsSection({
   onOpen,
 }: CheckinsSectionProps) {
   return (
-    <div className="mt-6 border-t border-border">
-      <div className="h-12 flex items-center justify-center border-b border-border">
-        <Grid3X3 size={18} />
+    <div
+      className="mt-6 border-t"
+      style={{
+        borderColor:
+          theme.colors.border,
+      }}
+    >
+      <div
+        className="h-12 flex items-center justify-center border-b"
+        style={{
+          borderColor:
+            theme.colors.border,
+        }}
+      >
+        <Grid3X3
+          size={18}
+        />
       </div>
 
       {loading ? (
         <div className="py-10 flex justify-center">
-          <Loader2 className="animate-spin text-primary" />
+          <Loader2
+            className="animate-spin"
+            style={{
+              color:
+                theme.colors.primary,
+            }}
+          />
         </div>
       ) : checkins.length ===
         0 ? (
-        <div className="p-6 text-center text-sm text-muted-foreground">
+        <div
+          className="p-6 text-center text-sm"
+          style={{
+            color:
+              theme.colors.textMuted,
+          }}
+        >
           Nenhum check-in ainda.
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-[2px] bg-border">
+        <div
+          className="grid grid-cols-3 gap-[2px]"
+          style={{
+            background:
+              theme.colors.border,
+          }}
+        >
           {checkins.map(
             (
               item
@@ -793,7 +936,11 @@ function CheckinsSection({
                     item.placeId
                   )
                 }
-                className="aspect-square bg-card flex flex-col items-center justify-center p-2 hover:bg-secondary"
+                className="aspect-square flex flex-col items-center justify-center p-2"
+                style={{
+                  background:
+                    theme.colors.surface,
+                }}
               >
                 <p className="text-[11px] font-semibold text-center line-clamp-2">
                   {
@@ -801,8 +948,15 @@ function CheckinsSection({
                   }
                 </p>
 
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  ⭐ {
+                <p
+                  className="text-[10px] mt-1"
+                  style={{
+                    color:
+                      theme.colors.textMuted,
+                  }}
+                >
+                  ⭐{" "}
+                  {
                     item.rating
                   }
                   /5
