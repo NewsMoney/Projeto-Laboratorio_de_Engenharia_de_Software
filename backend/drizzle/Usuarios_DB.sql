@@ -1,13 +1,20 @@
-CREATE TABLE `users` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`username` text,
-	`name` text,
-	`dataNascimento` DATE,
-	`email` varchar(320),
-	`passwordHash` varchar(255),
-	`role` enum('user','admin') NOT NULL DEFAULT 'user',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-	`lastSignedIn` timestamp NOT NULL DEFAULT (now()),
-	CONSTRAINT `users_id` PRIMARY KEY(`id`),
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  username VARCHAR(30) NOT NULL UNIQUE,
+  name VARCHAR(120) NOT NULL,
+
+  birthDate DATE NOT NULL,
+
+  email VARCHAR(320) NOT NULL UNIQUE,
+  passwordHash VARCHAR(255) NOT NULL,
+
+  bio TEXT,
+  avatarUrl TEXT,
+
+  role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  lastSignedIn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

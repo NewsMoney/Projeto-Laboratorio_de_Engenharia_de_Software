@@ -15,6 +15,13 @@
       "when": 1775632044427,
       "tag": "0001_nostalgic_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1776910647483,
+      "tag": "0002_yellow_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }

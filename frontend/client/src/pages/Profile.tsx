@@ -104,7 +104,7 @@ export default function Profile() {
         <CheckinsSection
           loading={profileLoading}
           checkins={recentCheckins}
-          onOpen={(placeId) =>
+          onOpen={(placeId: number) =>
             setLocation(`/details/${placeId}`)
           }
         />
