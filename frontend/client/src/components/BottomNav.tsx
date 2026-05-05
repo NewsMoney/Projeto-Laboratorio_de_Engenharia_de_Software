@@ -2,9 +2,6 @@ import { MapPin, Search, CheckCircle, Trophy, User } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
 
-// Nota: Assumindo que o Tailwind está configurado para ler os tokens do seu theme.ts
-// Caso contrário, você pode usar inline styles ou CSS variables.
-
 const navItems = [
   { href: "/checkin", icon: CheckCircle, label: "Check-in" },
   { href: "/search", icon: Search, label: "Buscar" },

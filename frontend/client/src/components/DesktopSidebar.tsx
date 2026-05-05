@@ -22,74 +22,7 @@ const navItems = [
 ];
 
 /* ================================================== */
-/* BOTTOM NAV (MOBILE) - AJUSTADO COM THEME.TS */
-/* ================================================== */
-
-export function BottomNav() {
-  const [location] = useLocation();
-
-  return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom border-t"
-      style={{ 
-        backgroundColor: `${theme.colors.surface}F2`, // surface com 95% opacidade
-        borderColor: theme.colors.border,
-        backdropFilter: "blur(12px)"
-      }}
-    >
-      <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive = href === "/" ? location === "/" : location.startsWith(href);
-          
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "relative flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all duration-300 min-w-[64px]",
-                isActive ? "opacity-100" : "opacity-50 hover:opacity-80"
-              )}
-              style={{ color: isActive ? theme.colors.primary : theme.colors.textMuted }}
-            >
-              {/* Ícone com Glow quando ativo */}
-              <div className={cn(
-                "relative flex items-center justify-center p-1 rounded-xl transition-all duration-300",
-                isActive && "bg-[#00FF66]/10"
-              )}
-              style={{ 
-                boxShadow: isActive ? theme.shadow.neon : "none" 
-              }}>
-                <Icon 
-                  size={22} 
-                  strokeWidth={isActive ? 2.5 : 1.5} 
-                  className={cn("transition-transform", isActive && "scale-110")}
-                />
-              </div>
-
-              <span className="text-[10px] font-bold uppercase tracking-wider leading-tight">
-                {label}
-              </span>
-
-              {/* Indicador inferior */}
-              {isActive && (
-                <div 
-                  className="absolute -bottom-[1px] w-8 h-[2px] rounded-full"
-                  style={{ 
-                    backgroundColor: theme.colors.primary,
-                    boxShadow: `0 0 10px ${theme.colors.primary}`
-                  }} 
-                />
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
-/* ================================================== */
-/* DESKTOP SIDEBAR - AJUSTADA COM THEME.TS */
+/* DESKTOP SIDEBAR
 /* ================================================== */
 
 export function DesktopSidebar() {

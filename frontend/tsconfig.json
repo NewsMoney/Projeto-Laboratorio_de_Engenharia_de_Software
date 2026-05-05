@@ -1,5 +1,5 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  "include": ["client/src/**/*", "shared/**/*"],
   "exclude": ["node_modules", "build", "dist"],
 
   "compilerOptions": {
@@ -15,9 +15,6 @@
     "allowImportingTsExtensions": true,
 
     "moduleResolution": "bundler",
-
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
 
     "types": ["node", "vite/client"],
 
