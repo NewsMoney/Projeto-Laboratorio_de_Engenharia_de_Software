@@ -11,10 +11,11 @@ type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 function createPublicContext(): TrpcContext {
   return {
     user: null,
-    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    // Adicionado 'as unknown' antes de 'as TrpcContext["req"]'
+    req: { protocol: "https", headers: {} } as unknown as TrpcContext["req"],
     res: {
-      clearCookie: () => {},
-    } as TrpcContext["res"],
+      clearCookie: ( ) => {},
+    } as unknown as TrpcContext["res"],
   };
 }
 
@@ -23,7 +24,6 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 
   const user: AuthenticatedUser = {
     id: 1,
-    openId: "test-user-123",
     email: "test@example.com",
     name: "Test User",
     loginMethod: "google",
@@ -32,16 +32,16 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
-  };
+  } as AuthenticatedUser;
 
   const ctx: TrpcContext = {
     user,
-    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    req: { protocol: "https", headers: {} } as unknown as TrpcContext["req"],
     res: {
-      clearCookie: (name: string, options: Record<string, unknown>) => {
+      clearCookie: (name: string, options: Record<string, unknown> ) => {
         clearedCookies.push({ name, options });
       },
-    } as TrpcContext["res"],
+    } as unknown as TrpcContext["res"],
   };
 
   return { ctx, clearedCookies };
