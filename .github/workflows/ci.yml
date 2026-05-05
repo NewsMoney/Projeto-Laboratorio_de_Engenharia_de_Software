@@ -10,87 +10,77 @@ jobs:
   frontend:
     name: Frontend - Build & Check
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: frontend
 
-    strategy:
-      matrix:
-        node-version: [22]
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type check
-        run: pnpm check
-
-      - name: Build
-        run: pnpm build
-        env:
-          VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
-          VITE_OAUTH_PORTAL_URL: ${{ secrets.VITE_OAUTH_PORTAL_URL }}
-          VITE_FRONTEND_FORGE_API_KEY: ${{ secrets.VITE_FRONTEND_FORGE_API_KEY }}
-          VITE_FRONTEND_FORGE_API_URL: ${{ secrets.VITE_FRONTEND_FORGE_API_URL }}
-          VITE_ANALYTICS_ENDPOINT: ${{ secrets.VITE_ANALYTICS_ENDPOINT }}
-          VITE_ANALYTICS_WEBSITE_ID: ${{ secrets.VITE_ANALYTICS_WEBSITE_ID }}
-
-      - name: Upload frontend build
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
 
   backend:
     name: Backend - Test & Build
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: joinme
+          MYSQL_USER: appuser
+          MYSQL_PASSWORD: senha123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     defaults:
       run:
         working-directory: backend
 
-    strategy:
-      matrix:
-        node-version: [22]
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: pnpm
           cache-dependency-path: backend/pnpm-lock.yaml
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
 
-      - name: Type check
-        run: pnpm check
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h "127.0.0.1" -uappuser -psenha123 --silent; do
+            sleep 2
+          done
 
-      - name: Run tests
-        run: pnpm test
+      - name: Setup env
+        run: echo "DATABASE_URL=mysql://appuser:senha123@127.0.0.1:3306/joinme" >> .env
 
-      - name: Build
-        run: pnpm build
+      - run: pnpm db:push
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
