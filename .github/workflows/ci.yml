@@ -1,68 +1,86 @@
-backend:
-  name: Backend - Test & Build
-  runs-on: ubuntu-latest
+name: CI
 
-  services:
-    mysql:
-      image: mysql:8
-      env:
-        MYSQL_ROOT_PASSWORD: root
-        MYSQL_DATABASE: joinme
-        MYSQL_USER: appuser
-        MYSQL_PASSWORD: senha123
-      ports:
-        - 3306:3306
-      options: >-
-        --health-cmd="mysqladmin ping --silent"
-        --health-interval=10s
-        --health-timeout=5s
-        --health-retries=5
+on:
+  push:
+    branches: [main, develop, master]
+  pull_request:
+    branches: [main, develop, master]
 
-  defaults:
-    run:
-      working-directory: backend
+jobs:
+  frontend:
+    name: Frontend - Build & Check
+    runs-on: ubuntu-latest
 
-  strategy:
-    matrix:
-      node-version: [22]
+    defaults:
+      run:
+        working-directory: frontend
 
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: pnpm
-        cache-dependency-path: backend/pnpm-lock.yaml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
 
-    - name: Wait for MySQL
-      run: |
-        until mysqladmin ping -h "127.0.0.1" -uappuser -psenha123 --silent; do
-          sleep 2
-        done
+  backend:
+    name: Backend - Test & Build
+    runs-on: ubuntu-latest
 
-    - name: Setup env
-      run: |
-        echo "DATABASE_URL=mysql://appuser:senha123@127.0.0.1:3306/joinme" >> .env
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: joinme
+          MYSQL_USER: appuser
+          MYSQL_PASSWORD: senha123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
-    - name: Run migrations (Drizzle)
-      run: pnpm db:push
+    defaults:
+      run:
+        working-directory: backend
 
-    - name: Type check
-      run: pnpm check
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Run tests
-      run: pnpm test
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
-    - name: Build
-      run: pnpm build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h "127.0.0.1" -uappuser -psenha123 --silent; do
+            sleep 2
+          done
+
+      - name: Setup env
+        run: echo "DATABASE_URL=mysql://appuser:senha123@127.0.0.1:3306/joinme" >> .env
+
+      - run: pnpm db:push
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
