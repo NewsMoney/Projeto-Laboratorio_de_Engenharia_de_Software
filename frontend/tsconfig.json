@@ -1,8 +1,7 @@
 {
   "include": [
     "client/src/**/*", 
-    "shared/**/*",
-    "../backend/drizzle/schema.ts" // ADICIONE ESTA LINHA
+    "shared/**/*"
   ],
   "exclude": ["node_modules", "build", "dist"],
 
@@ -20,7 +19,7 @@
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"],
-      "@backend/*": ["../backend/*"] // ADICIONE ESTE ALIAS (OPCIONAL)
+      "@backend/*": ["../backend/*"]
     }
   }
 }
