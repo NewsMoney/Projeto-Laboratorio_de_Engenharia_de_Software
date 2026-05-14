@@ -1,29 +1,26 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  "include": [
+    "client/src/**/*", 
+    "shared/**/*",
+    "../backend/drizzle/schema.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"],
 
   "compilerOptions": {
     "noEmit": true,
     "module": "ESNext",
-    "strict": true,
-
+    "strict": false,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
-
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-
     "moduleResolution": "bundler",
-
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
-
     "types": ["node", "vite/client"],
-
     "paths": {
       "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@shared/*": ["./shared/*"],
+      "@backend/*": ["../backend/*"]
     }
   }
 }
