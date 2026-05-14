@@ -46,7 +46,7 @@ export default function LoginPage() {
   /* ---------------------------------- */
 
   async function handleLogin(
-    e: React.FormEvent
+    e: React.SubmitEvent
   ) {
     e.preventDefault();
 
@@ -67,12 +67,20 @@ export default function LoginPage() {
         lng: number;
       } | null
     ) => {
+      const loginValue = email.trim();
+
       loginMutation.mutate({
-        email:
-          email.trim(),
+        email: loginValue.includes("@")
+          ? loginValue
+          : undefined,
+      
+        username: !loginValue.includes("@")
+          ? loginValue
+          : undefined,
+      
         password,
-        location:
-          locationData,
+      
+        location: locationData,
       });
     };
 

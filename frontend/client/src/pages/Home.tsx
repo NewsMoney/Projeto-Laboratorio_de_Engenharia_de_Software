@@ -45,6 +45,8 @@ const FILTERS = [
   { label: "Shows", icon: Calendar },
 ];
 
+const logo = "src/components/ui/logo-icon.png"
+
 /* ================================================== */
 /* COMPONENTE PRINCIPAL: HOME */
 /* ================================================== */
@@ -55,7 +57,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
 
-  const { data: topPlaces } = trpc.places.topPlaces.useQuery({ limit: 20 });
+  const { data: topPlaces } = trpc.places.topPlaces.useQuery({ limit: 50 });
 
   // Lógica de Filtro Unificada
   const filteredPlaces = useMemo(() => {
@@ -66,8 +68,7 @@ export default function Home() {
         place.address.toLowerCase().includes(search.toLowerCase());
       
       const matchesCategory = 
-        activeFilter === "Todos" || 
-        place.category?.toLowerCase() === activeFilter.toLowerCase();
+        activeFilter === "Todos" || place.category?.toLowerCase() === activeFilter.toLowerCase();
 
       return matchesSearch && matchesCategory;
     });
@@ -98,9 +99,6 @@ export default function Home() {
           showUserLocation
           className="absolute inset-0 z-0"
         />
-
-        {/* OVERLAY SUAVE DO MAPA */}
-        <div className="absolute inset-0 z-10 pointer-events-none bg-black/20" />
 
         {/* UI MOBILE (Header + Search + Filters) */}
         <div className="lg:hidden relative z-[1000] px-5 pt-6 pb-2 bg-gradient-to-b from-black/90 via-black/40 to-transparent">
@@ -147,7 +145,7 @@ export function DesktopSidebar({ user, isAuthenticated, logout, location }: any)
         <Link href="/" className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 bg-[#00FF66]/20 blur-lg rounded-full" />
-            <img src="src/logo-icon.png" alt="Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_8px_#00FF66]" />
+            <img src= {logo} alt="Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_8px_#00FF66]" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tighter">
             <span className="text-white">Join</span>
@@ -248,7 +246,7 @@ function MobileHeader({ user, isAuthenticated, onProfile, onLogin }: any) {
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-0">
-        <img src="src/logo-icon.png" alt="Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_8px_#00FF66]" />
+        <img src= {logo} alt="Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_8px_#00FF66]" />
         <h1 className="text-3xl font-extrabold tracking-tighter text-white">
           Join<span style={{ color: theme.colors.primary }}>Me</span>
         </h1>

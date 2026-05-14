@@ -34,7 +34,7 @@ export const appRouter = router({
         z.object({
           name: z.string().min(2),
           username: z.string().min(3).max(30),
-          email: z.string().email(),
+          email: z.string(),
           password: z.string().min(4),
           birthDate: z.string(),
         })
@@ -51,34 +51,55 @@ export const appRouter = router({
 
     login: publicProcedure
       .input(
-        z.object({
-          email: z.string().email(),
-          password: z.string(),
-          location: z
-            .object({
-              lat: z.number(),
-              lng: z.number(),
-            })
-            .nullable()
-            .optional(),
-        })
+        z
+          .object({
+            email: z
+              .string()
+              .email()
+              .optional(),
+          
+            username: z
+              .string()
+              .min(3)
+              .optional(),
+          
+            password: z.string(),
+          
+            location: z
+              .object({
+                lat: z.number(),
+                lng: z.number(),
+              })
+              .nullable()
+              .optional(),
+          })
+          .refine(
+            (data) =>
+              !!data.email !== !!data.username,
+            {
+              message:
+                "Informe email ou username",
+            }
+          )
       )
       .mutation(async ({ input, ctx }) => {
         const user = await loginUser({
           email: input.email,
+          username: input.username,
           password: input.password,
         });
-
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-
+      
+        const cookieOptions =
+          getSessionCookieOptions(ctx.req);
+      
         ctx.res.cookie(
           COOKIE_NAME,
           String(user.id),
           cookieOptions
         );
-
+      
         return user;
-      }),
+    }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
       ctx.res.clearCookie(COOKIE_NAME, {

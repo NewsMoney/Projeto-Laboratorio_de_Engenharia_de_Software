@@ -8,7 +8,7 @@ import {
   InsertUser,
   InsertPlace,
   InsertCheckin,
-} from "../drizzle/schema";
+} from "../../backend/drizzle/schema";
 
 import bcrypt from "bcryptjs";
 
@@ -172,7 +172,8 @@ export async function registerUser(data: {
 }
 
 export async function loginUser(data: {
-  email: string;
+  email?: string;
+  username?: string;
   password: string;
 }) {
   const db = await getDb();
@@ -181,11 +182,27 @@ export async function loginUser(data: {
     throw new Error("Database not available");
   }
 
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, data.email))
-    .limit(1);
+  let result;
+
+  if (data.email) {
+    result = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, data.email))
+      .limit(1);
+
+  } else if (data.username) {
+    result = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, data.username))
+      .limit(1);
+
+  } else {
+    throw new Error(
+      "Email ou username obrigatório"
+    );
+  }
 
   const user = result[0];
 
@@ -193,10 +210,11 @@ export async function loginUser(data: {
     throw new Error("Usuário inválido");
   }
 
-  const validPassword = await bcrypt.compare(
-    data.password,
-    user.passwordHash
-  );
+  const validPassword =
+    await bcrypt.compare(
+      data.password,
+      user.passwordHash
+    );
 
   if (!validPassword) {
     throw new Error("Senha incorreta");
