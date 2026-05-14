@@ -147,7 +147,7 @@ export function DesktopSidebar({ user, isAuthenticated, logout, location }: any)
         <Link href="/" className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 bg-[#00FF66]/20 blur-lg rounded-full" />
-            <img src="/logo-icon.png" alt="Logo" className="w-10 h-10 object-contain relative z-10 drop-shadow-[0_0_8px_#00FF66]" />
+            <img src="src/logo-icon.png" alt="Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_8px_#00FF66]" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tighter">
             <span className="text-white">Join</span>
@@ -247,8 +247,8 @@ export function BottomNav({ location }: { location: string }) {
 function MobileHeader({ user, isAuthenticated, onProfile, onLogin }: any) {
   return (
     <div className="flex items-center justify-between mb-6">
-      <div className="flex items-center gap-3">
-        <img src="/logo-icon.png" alt="Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_8px_#00FF66]" />
+      <div className="flex items-center gap-0">
+        <img src="src/logo-icon.png" alt="Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_8px_#00FF66]" />
         <h1 className="text-3xl font-extrabold tracking-tighter text-white">
           Join<span style={{ color: theme.colors.primary }}>Me</span>
         </h1>

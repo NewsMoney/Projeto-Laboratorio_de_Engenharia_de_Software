@@ -13,7 +13,7 @@ function createPublicContext(): TrpcContext {
     user: null,
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
     res: {
-      clearCookie: () => {},
+      clearCookie: (_name: string, _options?: Record<string, unknown>) => {},
     } as TrpcContext["res"],
   };
 }
@@ -23,12 +23,15 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 
   const user: AuthenticatedUser = {
     id: 1,
-    openId: "test-user-123",
-    email: "test@example.com",
-    name: "Test User",
+    username: "sampleuser",
+    name: "Sample User",
+    birthDate: new Date("2000-01-01"),
+    email: "sample@example.com",
+    passwordHash: "hashed-password",
     loginMethod: "google",
-    role: "user",
+    bio: null,
     avatarUrl: null,
+    role: "user",
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
