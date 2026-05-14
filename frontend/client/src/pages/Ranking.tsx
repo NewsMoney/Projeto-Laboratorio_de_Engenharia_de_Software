@@ -25,7 +25,7 @@ export default function Ranking() {
   } =
     trpc.ranking.topPlaces.useQuery(
       {
-        limit: 10,
+        limit: 20,
       }
     );
 
