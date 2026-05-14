@@ -19,16 +19,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 /* ================================================== */
 
 export default function Details() {
-  const [match, params] = useRoute<{ id: string }>("/details/:id");
-
-  if (!match || !params) {
-    return <EmptyState onBack={() => setLocation("/")} />;
-  }
+  const [, params] =
+    useRoute(
+      "/details/:id"
+    );
 
   const [, setLocation] =
     useLocation();
 
-  const placeId = parseInt(params.id, 10);
+  const placeId =
+    params?.id
+      ? parseInt(
+          params.id,
+          10
+        )
+      : 0;
 
   const {
     data: place,

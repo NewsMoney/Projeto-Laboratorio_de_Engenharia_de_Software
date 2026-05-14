@@ -17,13 +17,16 @@
     "module": "ESNext",
     "strict": true,
 
-    "lib": ["ES2022", "DOM"],
+    "lib": ["esnext"],
 
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
 
     "moduleResolution": "bundler",
+
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
 
     "types": ["node"],
 
