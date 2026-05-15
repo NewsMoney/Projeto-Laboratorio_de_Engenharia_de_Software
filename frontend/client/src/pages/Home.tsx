@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { theme } from "@/lib/theme"; // Importando seus tokens de tema
+import { theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { getLoginUrl } from "@/const";
 
 import LeafletMap from "@/components/LeafletMap";
-import { Button } from "@/components/ui/button";
 
 import {
   Search,
@@ -21,22 +20,18 @@ import {
   X,
   Sparkles,
   MapPin,
-  CheckCircle,
   Trophy,
   LogOut
 } from "lucide-react";
+
+// Importando componentes e constantes de layoutbars.tsx
+import { DesktopSidebar, BottomNav } from "../components/LayoutBars";
 
 /* ================================================== */
 /* CONFIGURAÇÕES E CONSTANTES */
 /* ================================================== */
 
-const NAV_ITEMS = [
-  { href: "/checkin", icon: CheckCircle, label: "Check-in" },
-  { href: "/search", icon: Search, label: "Buscar" },
-  { href: "/", icon: MapPin, label: "Mapa" },
-  { href: "/ranking", icon: Trophy, label: "Ranking" },
-  { href: "/profile", icon: User, label: "Perfil" },
-];
+const logo = "src/components/ui/logo-icon.png";
 
 const FILTERS = [
   { label: "Todos", icon: Sparkles },
@@ -44,8 +39,6 @@ const FILTERS = [
   { label: "Bares", icon: Radio },
   { label: "Shows", icon: Calendar },
 ];
-
-const logo = "src/components/ui/logo-icon.png"
 
 /* ================================================== */
 /* COMPONENTE PRINCIPAL: HOME */
@@ -82,12 +75,7 @@ export default function Home() {
       style={{ background: theme.colors.background }}
     >
       {/* 1. SIDEBAR (DESKTOP) */}
-      <DesktopSidebar 
-        user={user} 
-        isAuthenticated={isAuthenticated} 
-        logout={logout} 
-        location={location} 
-      />
+      <DesktopSidebar />
 
       {/* 2. CONTEÚDO PRINCIPAL (MAPA + OVERLAYS) */}
       <main className="flex-1 relative h-full">
@@ -123,118 +111,9 @@ export default function Home() {
         <NearbyButton count={filteredPlaces.length} />
 
         {/* 3. BOTTOM NAV (MOBILE) */}
-        <BottomNav location={location} />
+        <BottomNav />
       </main>
     </div>
-  );
-}
-
-/* ================================================== */
-/* COMPONENTES DE NAVEGAÇÃO */
-/* ================================================== */
-
-// SIDEBAR DESKTOP
-export function DesktopSidebar({ user, isAuthenticated, logout, location }: any) {
-  return (
-    <aside 
-      className="hidden lg:flex flex-col w-72 h-screen sticky top-0 border-r z-[1001]"
-      style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
-    >
-      {/* Logo Section */}
-      <div className="px-8 py-10 border-b" style={{ borderColor: theme.colors.borderSoft }}>
-        <Link href="/" className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-[#00FF66]/20 blur-lg rounded-full" />
-            <img src= {logo} alt="Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_8px_#00FF66]" />
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tighter">
-            <span className="text-white">Join</span>
-            <span style={{ color: theme.colors.primary }}>Me</span>
-          </h1>
-        </Link>
-      </div>
-
-      {/* Nav Items */}
-      <nav className="flex-1 px-4 py-8 space-y-2">
-        {NAV_ITEMS.map((item) => {
-          const isActive = item.href === "/" ? location === "/" : location.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all group",
-                isActive ? "shadow-lg" : "hover:bg-white/5"
-              )}
-              style={{
-                backgroundColor: isActive ? `${theme.colors.primary}15` : "transparent",
-                color: isActive ? theme.colors.primary : theme.colors.textSoft,
-                border: isActive ? `1px solid ${theme.colors.primary}30` : "1px solid transparent"
-              }}
-            >
-              <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="group-hover:scale-110 transition-transform" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* User Section */}
-      <div className="px-6 py-8 border-t" style={{ borderColor: theme.colors.borderSoft }}>
-        {isAuthenticated ? (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0B0B0B] border border-[#27272a] flex items-center justify-center">
-              <User size={20} style={{ color: theme.colors.primary }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user?.username || "Usuário"}</p>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Membro</p>
-            </div>
-            <button onClick={() => logout()} className="p-2 text-zinc-500 hover:text-red-500 transition-colors">
-              <LogOut size={18} />
-            </button>
-          </div>
-        ) : (
-          <Button 
-            className="w-full h-12 rounded-xl font-bold uppercase tracking-widest"
-            style={{ backgroundColor: theme.colors.primary, color: "black", boxShadow: theme.shadow.neon }}
-            onClick={() => window.location.href = getLoginUrl()}
-          >
-            Entrar
-          </Button>
-        )}
-      </div>
-    </aside>
-  );
-}
-
-// BOTTOM NAV MOBILE
-export function BottomNav({ location }: { location: string }) {
-  return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom border-t"
-      style={{ backgroundColor: `${theme.colors.surface}F2`, borderColor: theme.colors.border, backdropFilter: "blur(12px)" }}
-    >
-      <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-        {NAV_ITEMS.map((item) => {
-          const isActive = item.href === "/" ? location === "/" : location.startsWith(item.href);
-          return (
-            <Link key={item.href} href={item.href} className="relative flex flex-col items-center justify-center gap-1 min-w-[64px] transition-all active:scale-90">
-              <div 
-                className={cn("p-1.5 rounded-xl transition-all", isActive && "bg-[#00FF66]/10")}
-                style={{ boxShadow: isActive ? theme.shadow.neon : "none", color: isActive ? theme.colors.primary : theme.colors.textMuted }}
-              >
-                <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
-              </div>
-              <span className="text-[9px] font-bold uppercase tracking-tighter" style={{ color: isActive ? theme.colors.primary : theme.colors.textMuted }}>
-                {item.label}
-              </span>
-              {isActive && <div className="absolute -bottom-1 w-6 h-0.5 rounded-full" style={{ backgroundColor: theme.colors.primary, boxShadow: `0 0 8px ${theme.colors.primary}` }} />}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
   );
 }
 
@@ -242,7 +121,7 @@ export function BottomNav({ location }: { location: string }) {
 /* COMPONENTES DE UI AUXILIARES */
 /* ================================================== */
 
-function MobileHeader({ user, isAuthenticated, onProfile, onLogin }: any) {
+function MobileHeader({ isAuthenticated, onProfile, onLogin }: any) {
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-0">

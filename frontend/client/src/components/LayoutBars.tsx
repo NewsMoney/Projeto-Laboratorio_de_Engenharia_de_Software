@@ -8,6 +8,7 @@ import {
   Shield,
   Users,
   FileText,
+  Settings,
 } from "lucide-react";
 
 import { useLocation, Link } from "wouter";
@@ -34,8 +35,10 @@ const adminNavItems = [
   { href: "/users", icon: Users, label: "Usuários" },
   { href: "/", icon: MapPin, label: "Mapa" },
   { href: "/reports", icon: FileText, label: "Relatórios" },
-  { href: "/profile", icon: User, label: "Perfil" },
+  { href: "/settings", icon: Settings, label: "Config" },
 ];
+
+const logo = "src/components/ui/logo-icon.png";
 
 /* ================================================== */
 /* HELPERS */
@@ -61,10 +64,10 @@ function isRouteActive(
 
 export function BottomNav() {
   const [location] = useLocation();
+
   const { user } = useAuth();
 
-  const isAdmin =
-    user?.role?.toLowerCase() === "admin";
+  const isAdmin = user?.role === "admin";
 
   const navItems = isAdmin
     ? adminNavItems
@@ -72,78 +75,65 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom border-t"
-      style={{
-        backgroundColor: `${theme.colors.surface}F2`,
-        borderColor: theme.colors.border,
-        backdropFilter: "blur(12px)",
-      }}
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50",
+        "bg-[#050505]/95 backdrop-blur-xl",
+        "border-t border-[#27272a]",
+        "lg:hidden safe-area-bottom"
+      )}
     >
       <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-        {navItems.map(
-          ({ href, icon: Icon, label }) => {
-            const isActive = isRouteActive(
-              location,
-              href
-            );
+        {navItems.map(({ href, icon: Icon, label }) => {
+          const isActive =
+            href === "/"
+              ? location === "/"
+              : location.startsWith(href);
 
-            return (
-              <Link
-                key={href}
-                href={href}
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "relative flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all duration-300 min-w-[64px]",
+                isActive
+                  ? "text-[#00FF66]"
+                  : "text-[#71717a] hover:text-[#FFFFFF]"
+              )}
+            >
+              <div
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all duration-300 min-w-[64px]",
-                  isActive
-                    ? "opacity-100"
-                    : "opacity-50 hover:opacity-80"
+                  "relative flex items-center justify-center p-1 rounded-lg transition-all duration-300",
+                  isActive &&
+                    "bg-[#00FF66]/10 shadow-[0_0_18px_rgba(0,255,102,0.22)]"
                 )}
-                style={{
-                  color: isActive
-                    ? theme.colors.primary
-                    : theme.colors.textMuted,
-                }}
               >
-                <div
+                <Icon
+                  size={22}
+                  strokeWidth={isActive ? 2.5 : 1.5}
                   className={cn(
-                    "relative flex items-center justify-center p-1 rounded-xl transition-all duration-300",
-                    isActive && "bg-[#00FF66]/10"
+                    "transition-transform duration-300",
+                    isActive && "scale-110"
                   )}
-                  style={{
-                    boxShadow: isActive
-                      ? theme.shadow.neon
-                      : "none",
-                  }}
-                >
-                  <Icon
-                    size={22}
-                    strokeWidth={
-                      isActive ? 2.5 : 1.5
-                    }
-                    className={cn(
-                      "transition-transform",
-                      isActive && "scale-110"
-                    )}
-                  />
-                </div>
+                />
+              </div>
 
-                <span className="text-[10px] font-bold uppercase tracking-wider leading-tight">
-                  {label}
-                </span>
-
-                {isActive && (
-                  <div
-                    className="absolute -bottom-[1px] w-8 h-[2px] rounded-full"
-                    style={{
-                      backgroundColor:
-                        theme.colors.primary,
-                      boxShadow: `0 0 10px ${theme.colors.primary}`,
-                    }}
-                  />
+              <span
+                className={cn(
+                  "text-[10px] leading-tight tracking-wide uppercase",
+                  isActive
+                    ? "font-bold opacity-100"
+                    : "font-medium opacity-70"
                 )}
-              </Link>
-            );
-          }
-        )}
+              >
+                {label}
+              </span>
+
+              {isActive && (
+                <div className="absolute -bottom-[1px] w-10 h-[2px] bg-[#00FF66] rounded-full shadow-[0_0_10px_#00FF66]" />
+              )}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
@@ -164,7 +154,11 @@ export function DesktopSidebar() {
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r"
+      className="
+        hidden lg:flex flex-col
+        w-72 h-screen sticky top-0
+        border-r z-[1001]
+      "
       style={{
         backgroundColor: theme.colors.surface,
         borderColor: theme.colors.border,
@@ -187,44 +181,33 @@ export function DesktopSidebar() {
 /* SIDEBAR LOGO */
 /* ================================================== */
 
-function SidebarLogo() {
+export function SidebarLogo() {
   return (
     <div
-      className="px-6 py-8 border-b"
+      className="px-8 py-10 border-b"
       style={{
         borderColor: theme.colors.borderSoft,
       }}
     >
-      <Link
-        href="/"
-        className="flex items-center gap-3"
-      >
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{
-            backgroundColor: `${theme.colors.primary}15`,
-            border: `1px solid ${theme.colors.primary}`,
-            boxShadow: theme.shadow.neon,
-          }}
-        >
-          <MapPin
-            size={22}
-            style={{
-              color: theme.colors.primary,
-            }}
+      <Link href="/" className="flex items-center gap-3">
+        <div className="relative">
+          <div className="absolute inset-0 bg-[#00FF66]/20 blur-lg rounded-full" />
+
+          <img
+            src={ logo }
+            alt="Logo"
+            className="
+              w-16 h-16 object-contain
+              relative z-10
+              drop-shadow-[0_0_8px_#00FF66]
+            "
           />
         </div>
 
-        <h1 className="text-2xl font-extrabold tracking-tighter">
-          <span className="text-white">
-            Join
-          </span>
+        <h1 className="text-3xl font-extrabold tracking-tighter">
+          <span className="text-white">Join</span>
 
-          <span
-            style={{
-              color: theme.colors.primary,
-            }}
-          >
+          <span style={{ color: theme.colors.primary }}>
             Me
           </span>
         </h1>
