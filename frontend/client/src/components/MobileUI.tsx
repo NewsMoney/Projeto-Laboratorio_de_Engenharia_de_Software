@@ -4,11 +4,14 @@ import {
   CheckCircle,
   Trophy,
   User,
+  Bell,
   Shield,
   Users,
   FileText,
-  Settings,
 } from "lucide-react";
+
+
+import { theme } from "@/lib/theme";
 
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,13 +55,13 @@ const adminNavItems: NavItem[] = [
   { href: "/users", icon: Users, label: "Usuários" },
   { href: "/", icon: MapPin, label: "Mapa" },
   { href: "/reports", icon: FileText, label: "Relatórios" },
-  { href: "/settings", icon: Settings, label: "Config" },
 ];
 
 /**
  * @constant logo
  * @description Caminho para o ícone do logo da aplicação.
  */
+const logo = "src/components/ui/logo-icon.png";
 
 /* ================================================== */
 /* COMPONENTE BOTTOM NAV (MOBILE) */
@@ -149,5 +152,59 @@ export function BottomNav() {
         })}
       </div>
     </nav>
+  );
+}
+
+/* ================================================== */
+/* COMPONENTE HEADER (MOBILE) */
+/* ================================================== */
+
+/**
+ * @function MobileHeader
+ * @description Componente de cabeçalho superior (Header) para dispositivos móveis.
+ *              Exibe o logotipo da aplicação, o nome da marca e botões de ação (notificações e perfil/login).
+ * @param {boolean} isAuthenticated - Indica se o usuário está autenticado.
+ * @param {function} onProfile - Função chamada ao clicar no perfil quando autenticado.
+ * @param {function} onLogin - Função chamada ao clicar no botão de login quando não autenticado.
+ */
+export function MobileHeader({ isAuthenticated, onProfile, onLogin }: any) {
+  return (
+    <div className="flex items-center justify-between mb-6">
+      {/* Seção do Logotipo e Nome da Marca */}
+      <div className="flex items-center gap-0">
+        <img 
+          src={logo} 
+          alt="Logo" 
+          className="w-16 h-16 object-contain drop-shadow-[0_0_8px_#00FF66]" 
+        />
+        <h1 className="text-3xl font-extrabold tracking-tighter text-white">
+          Join<span style={{ color: theme.colors.primary }}>Me</span>
+        </h1>
+      </div>
+
+      {/* Seção de Ações (Notificações e Usuário) */}
+      <div className="flex items-center gap-3">
+        {/* Botão de Notificações com indicador visual */}
+        <button className="relative p-2 active:scale-90 transition-transform">
+          <Bell size={24} style={{ color: theme.colors.primary }} />
+          <span 
+            className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full border-2 border-black" 
+            style={{ background: theme.colors.primary }} 
+          />
+        </button>
+
+        {/* Botão de Perfil ou Login dinâmico */}
+        <button 
+          onClick={isAuthenticated ? onProfile : onLogin} 
+          className="w-10 h-10 rounded-full border flex items-center justify-center active:scale-90" 
+          style={{ 
+            borderColor: theme.colors.border, 
+            background: theme.colors.surface 
+          }}
+        >
+          <User size={20} className="text-[#a1a1aa]" />
+        </button>
+      </div>
+    </div>
   );
 }
