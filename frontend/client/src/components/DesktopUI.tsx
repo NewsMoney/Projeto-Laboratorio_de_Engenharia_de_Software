@@ -59,87 +59,6 @@ function isRouteActive(
 }
 
 /* ================================================== */
-/* BOTTOM NAV (MOBILE) */
-/* ================================================== */
-
-export function BottomNav() {
-  const [location] = useLocation();
-
-  const { user } = useAuth();
-
-  const isAdmin = user?.role === "admin";
-
-  const navItems = isAdmin
-    ? adminNavItems
-    : defaultNavItems;
-
-  return (
-    <nav
-      className={cn(
-        "fixed bottom-0 left-0 right-0 z-50",
-        "bg-[#050505]/95 backdrop-blur-xl",
-        "border-t border-[#27272a]",
-        "lg:hidden safe-area-bottom"
-      )}
-    >
-      <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive =
-            href === "/"
-              ? location === "/"
-              : location.startsWith(href);
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "relative flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all duration-300 min-w-[64px]",
-                isActive
-                  ? "text-[#00FF66]"
-                  : "text-[#71717a] hover:text-[#FFFFFF]"
-              )}
-            >
-              <div
-                className={cn(
-                  "relative flex items-center justify-center p-1 rounded-lg transition-all duration-300",
-                  isActive &&
-                    "bg-[#00FF66]/10 shadow-[0_0_18px_rgba(0,255,102,0.22)]"
-                )}
-              >
-                <Icon
-                  size={22}
-                  strokeWidth={isActive ? 2.5 : 1.5}
-                  className={cn(
-                    "transition-transform duration-300",
-                    isActive && "scale-110"
-                  )}
-                />
-              </div>
-
-              <span
-                className={cn(
-                  "text-[10px] leading-tight tracking-wide uppercase",
-                  isActive
-                    ? "font-bold opacity-100"
-                    : "font-medium opacity-70"
-                )}
-              >
-                {label}
-              </span>
-
-              {isActive && (
-                <div className="absolute -bottom-[1px] w-10 h-[2px] bg-[#00FF66] rounded-full shadow-[0_0_10px_#00FF66]" />
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
-/* ================================================== */
 /* DESKTOP SIDEBAR */
 /* ================================================== */
 
@@ -205,8 +124,23 @@ export function SidebarLogo() {
         </div>
 
         <h1 className="text-3xl font-extrabold tracking-tighter">
-          <span className="text-white">Join</span>
-
+          <span className="text-white">
+            Jo
+            <span className="relative inline-block">
+              ı 
+              <span
+                className="absolute left-[56%] -translate-x-1/2 rounded-full"
+                style={{
+                  width: "0.19em",
+                  height: "0.2em",
+                  backgroundColor: theme.colors.primary,
+                  top: "0.15em",
+                }}
+              />
+            </span>
+            n
+          </span>
+              
           <span style={{ color: theme.colors.primary }}>
             Me
           </span>

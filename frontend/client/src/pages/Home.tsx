@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { getLoginUrl } from "@/const";
 
 import LeafletMap from "@/components/LeafletMap";
 
@@ -19,13 +18,10 @@ import {
   Radio,
   X,
   Sparkles,
-  MapPin,
-  Trophy,
-  LogOut
 } from "lucide-react";
 
-// Importando componentes e constantes de layoutbars.tsx
-import { DesktopSidebar, BottomNav } from "../components/LayoutBars";
+import { DesktopSidebar } from "../components/DesktopUI";
+import { BottomNav } from "@/components/MobileUI";
 
 /* ================================================== */
 /* CONFIGURAÇÕES E CONSTANTES */

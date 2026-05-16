@@ -1,0 +1,140 @@
+import {
+  MapPin,
+  Search,
+  CheckCircle,
+  Trophy,
+  User,
+  LogOut,
+  Shield,
+  Users,
+  FileText,
+  Settings,
+} from "lucide-react";
+
+import { useLocation, Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+import { theme } from "@/lib/theme";
+import { getLoginUrl } from "@/const";
+import { Button } from "@/components/ui/button";
+
+/* ================================================== */
+/* NAV ITEMS */
+/* ================================================== */
+
+const defaultNavItems = [
+  { href: "/checkin", icon: CheckCircle, label: "Check-in" },
+  { href: "/search", icon: Search, label: "Buscar" },
+  { href: "/", icon: MapPin, label: "Mapa" },
+  { href: "/ranking", icon: Trophy, label: "Ranking" },
+  { href: "/profile", icon: User, label: "Perfil" },
+];
+
+const adminNavItems = [
+  { href: "/admin", icon: Shield, label: "Admin" },
+  { href: "/users", icon: Users, label: "Usuários" },
+  { href: "/", icon: MapPin, label: "Mapa" },
+  { href: "/reports", icon: FileText, label: "Relatórios" },
+  { href: "/settings", icon: Settings, label: "Config" },
+];
+
+const logo = "src/components/ui/logo-icon.png";
+
+/* ================================================== */
+/* HELPERS */
+/* ================================================== */
+
+function isRouteActive(
+  location: string,
+  href: string
+) {
+  if (href === "/") {
+    return location === "/";
+  }
+
+  return (
+    location === href ||
+    location.startsWith(`${href}/`)
+  );
+}
+
+/* ================================================== */
+/* BOTTOM NAV (MOBILE) */
+/* ================================================== */
+
+export function BottomNav() {
+  const [location] = useLocation();
+
+  const { user } = useAuth();
+
+  const isAdmin = user?.role === "admin";
+
+  const navItems = isAdmin
+    ? adminNavItems
+    : defaultNavItems;
+
+  return (
+    <nav
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50",
+        "bg-[#050505]/95 backdrop-blur-xl",
+        "border-t border-[#27272a]",
+        "lg:hidden safe-area-bottom"
+      )}
+    >
+      <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
+        {navItems.map(({ href, icon: Icon, label }) => {
+          const isActive =
+            href === "/"
+              ? location === "/"
+              : location.startsWith(href);
+
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "relative flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all duration-300 min-w-[64px]",
+                isActive
+                  ? "text-[#00FF66]"
+                  : "text-[#71717a] hover:text-[#FFFFFF]"
+              )}
+            >
+              <div
+                className={cn(
+                  "relative flex items-center justify-center p-1 rounded-lg transition-all duration-300",
+                  isActive &&
+                    "bg-[#00FF66]/10 shadow-[0_0_18px_rgba(0,255,102,0.22)]"
+                )}
+              >
+                <Icon
+                  size={22}
+                  strokeWidth={isActive ? 2.5 : 1.5}
+                  className={cn(
+                    "transition-transform duration-300",
+                    isActive && "scale-110"
+                  )}
+                />
+              </div>
+
+              <span
+                className={cn(
+                  "text-[10px] leading-tight tracking-wide uppercase",
+                  isActive
+                    ? "font-bold opacity-100"
+                    : "font-medium opacity-70"
+                )}
+              >
+                {label}
+              </span>
+
+              {isActive && (
+                <div className="absolute -bottom-[1px] w-10 h-[2px] bg-[#00FF66] rounded-full shadow-[0_0_10px_#00FF66]" />
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
