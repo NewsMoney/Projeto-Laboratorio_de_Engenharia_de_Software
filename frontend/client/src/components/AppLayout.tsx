@@ -1,4 +1,4 @@
-import { BottomNav } from "./DesktopUI";
+import { BottomNav } from "./MobileUI";
 import { DesktopSidebar } from "./DesktopUI";
 
 interface AppLayoutProps {
