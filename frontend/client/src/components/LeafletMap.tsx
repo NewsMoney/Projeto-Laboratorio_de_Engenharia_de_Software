@@ -44,10 +44,10 @@ const userIcon = L.divIcon({
   className: "joinme-user-marker",
   html: `<div style="
     width: 16px; height: 16px;
-    background: #3b82f6;
+    background: #2cd43a;
     border: 3px solid #fff;
     border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(59,130,246,0.3), 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 4px rgba(30, 30, 31, 0.49), 0 2px 8px rgba(0,0,0,0.3);
   "></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8],
