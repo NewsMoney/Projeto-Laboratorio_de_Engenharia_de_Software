@@ -1,5 +1,5 @@
-import { BottomNav } from "./LayoutBars";
-import { DesktopSidebar } from "./LayoutBars";
+import { BottomNav } from "./DesktopUI";
+import { DesktopSidebar } from "./DesktopUI";
 
 interface AppLayoutProps {
   children: React.ReactNode;
