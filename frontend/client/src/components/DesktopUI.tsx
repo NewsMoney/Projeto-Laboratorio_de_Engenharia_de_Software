@@ -8,7 +8,6 @@ import {
   Shield,
   Users,
   FileText,
-  Settings,
 } from "lucide-react";
 
 import { useLocation, Link } from "wouter";
@@ -56,7 +55,6 @@ const adminNavItems: NavItem[] = [
   { href: "/users", icon: Users, label: "Usuários" },
   { href: "/", icon: MapPin, label: "Mapa" },
   { href: "/reports", icon: FileText, label: "Relatórios" },
-  { href: "/settings", icon: Settings, label: "Config" },
 ];
 
 /**
@@ -171,28 +169,31 @@ export function SidebarLogo() {
           />
         </div>
 
-        <h1 className="text-3xl font-extrabold tracking-tighter"> {/* Título da aplicação */}
-          <span className="text-white"> {/* Parte "Jo" do nome */}
-            Jo
-            <span className="relative inline-block"> {/* Estilização especial para o "i" */}
-              ı 
-              <span
-                className="absolute left-[56%] -translate-x-1/2 rounded-full"
-                style={{
-                  width: "0.19em",
-                  height: "0.2em",
-                  backgroundColor: theme.colors.primary,
-                  top: "0.15em",
-                }}
-              />
+          <h1 className="text-3xl font-extrabold tracking-tighter">
+            <span className="text-white">
+              Jo
+
+              <span className="relative inline-block text-white">
+                i
+
+                <span
+                  className="absolute inset-0 overflow-hidden"
+                  style={{
+                    color: theme.colors.primary,
+                    clipPath: "inset(0 0 72% 0)",
+                  }}
+                >
+                  i
+                </span>
+              </span>
+                
+              n
             </span>
-            n
-          </span>
-              
-          <span style={{ color: theme.colors.primary }}> {/* Parte "Me" do nome com cor primária */}
-            Me
-          </span>
-        </h1>
+                
+            <span style={{ color: theme.colors.primary }}>
+              Me
+            </span>
+          </h1>
       </Link>
     </div>
   );
