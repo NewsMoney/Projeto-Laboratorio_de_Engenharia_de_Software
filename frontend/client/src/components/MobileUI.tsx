@@ -177,9 +177,27 @@ export function MobileHeader({ isAuthenticated, onProfile, onLogin }: any) {
           alt="Logo" 
           className="w-16 h-16 object-contain drop-shadow-[0_0_8px_#00FF66]" 
         />
-        <h1 className="text-3xl font-extrabold tracking-tighter text-white">
-          Join<span style={{ color: theme.colors.primary }}>Me</span>
-        </h1>
+          <h1 className="text-3xl font-extrabold tracking-tighter">
+            <span className="text-white">
+              Jo
+              <span className="relative inline-block text-white">
+                i
+                <span
+                  className="absolute inset-0 overflow-hidden"
+                  style={{
+                    color: theme.colors.primary,
+                    clipPath: "inset(0 0 72% 0)",
+                  }}
+                >
+                  i
+                </span>
+              </span>
+              n
+            </span>
+            <span style={{ color: theme.colors.primary }}>
+              Me
+            </span>
+          </h1>
       </div>
 
       {/* Seção de Ações (Notificações e Usuário) */}
