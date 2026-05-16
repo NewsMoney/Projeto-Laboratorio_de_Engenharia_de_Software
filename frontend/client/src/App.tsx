@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AppLayout } from "./components/AppLayout";
+
 import Home from "./pages/Home";
 import Search from "./pages/Search";
 import MapPage from "./pages/MapPage";
