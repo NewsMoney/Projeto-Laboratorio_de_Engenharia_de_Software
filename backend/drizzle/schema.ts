@@ -1,4 +1,17 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, index, primaryKey, int, text, mysqlEnum, timestamp, varchar, decimal, unique, date } from "drizzle-orm/mysql-core"
+import { 
+	mysqlTable, 
+	index, 
+	primaryKey, 
+	int, 
+	text, 
+	mysqlEnum, 
+	timestamp, 
+	varchar, 
+	decimal, 
+	unique, 
+	date,
+	foreignKey,
+} from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const checkins = mysqlTable("checkins", {
@@ -17,6 +30,9 @@ export const checkins = mysqlTable("checkins", {
 
 export const places = mysqlTable("places", {
 	id: int().autoincrement().notNull(),
+	type: mysqlEnum("type", ["place", "party"])
+		.default("place")
+		.notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	address: varchar({ length: 500 }).notNull(),
 	lat: decimal({ precision: 10, scale: 7 }).notNull(),
@@ -31,8 +47,13 @@ export const places = mysqlTable("places", {
 (table) => [
 	index("places_coords_idx").on(table.lat, table.lng),
 	primaryKey({ columns: [table.id], name: "places_id"}),
+	foreignKey({
+		columns: [table.createdById],
+		foreignColumns: [users.id],
+		name: "fk_places_user",
+	})
+		.onDelete("set null"),
 ]);
-
 export const users = mysqlTable("users", {
 	id: int().autoincrement().notNull(),
 	name: varchar({ length: 120 }).notNull(),

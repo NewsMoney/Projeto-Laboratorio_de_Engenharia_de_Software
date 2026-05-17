@@ -28,23 +28,54 @@ import {
   X,
 } from "lucide-react";
 
+import LeafletMap, {
+	MapPlace,
+} from "@/components/LeafletMap";
+
 import { theme } from "@/lib/theme";
+import { trpc } from "@/lib/trpc";
 
 type CreateMode = "party" | "place";
 type OpeningHourField = "enabled" | "open" | "close";
 type WeekDayKey = (typeof WEEK_DAYS)[number]["key"];
 type OpeningHours = Record<WeekDayKey, { enabled: boolean; open: string; close: string }>;
+
+type AddressFields = {
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  zipCode: string;
+};
+
 type FormState = {
+  // banco
   name: string;
+  address: string;
+
+  lat: number | null;
+  lng: number | null;
+
+  category: string;
+
+  description: string;
+
+  imageUrl: string;
+
+  // party
   genre: string;
   date: string;
   startTime: string;
   endTime: string;
+
   ageRange: string;
-  visibility: string;
-  capacity: string;
-  description: string;
-  addressOrCoordinate: string;
+
+  visibility: "public" | "private";
+
+  capacity: number | null;
+
+  // frontend
+  addressFields: AddressFields;
   confirmedLocation: string;
 };
 
@@ -52,11 +83,11 @@ const INITIAL_GENRES = ["Techno", "House", "Trance"];
 
 const WEEK_DAYS = [
   { key: "monday", short: "SEG", label: "Segunda" },
-  { key: "tuesday", short: "TER", label: "Terca" },
+  { key: "tuesday", short: "TER", label: "Terça" },
   { key: "wednesday", short: "QUA", label: "Quarta" },
   { key: "thursday", short: "QUI", label: "Quinta" },
   { key: "friday", short: "SEX", label: "Sexta" },
-  { key: "saturday", short: "SAB", label: "Sabado" },
+  { key: "saturday", short: "SAB", label: "Sábado" },
   { key: "sunday", short: "DOM", label: "Domingo" },
 ] as const;
 
@@ -65,18 +96,41 @@ const DEFAULT_OPENING_HOURS = WEEK_DAYS.reduce((acc, day) => {
   return acc;
 }, {} as OpeningHours);
 
+const INITIAL_ADDRESS_FIELDS: AddressFields = {
+  street: "",
+  number: "",
+  neighborhood: "",
+  city: "",
+  zipCode: "",
+};
+
 const INITIAL_FORM: FormState = {
-  name: "Neon Pulse",
-  genre: "Techno",
+  name: "",
+
+  address: "",
+
+  lat: null,
+  lng: null,
+
+  category: "general",
+
+  description: "",
+
+  imageUrl: "",
+
+  genre: "",
+
   date: "",
-  startTime: "23:00",
-  endTime: "06:00",
-  ageRange: "+18",
-  visibility: "Publica",
-  capacity: "800",
-  description:
-    "Uma noite intensa de Techno em um warehouse industrial com som poderoso, laser show e vibes underground.",
-  addressOrCoordinate: "",
+  startTime: "",
+  endTime: "",
+
+  ageRange: "",
+
+  visibility: "public",
+
+  capacity: null,
+
+  addressFields: INITIAL_ADDRESS_FIELDS,
   confirmedLocation: "",
 };
 
@@ -103,13 +157,13 @@ const AGE_OPTIONS = [
 
 const VISIBILITY_OPTIONS = [
   {
-    value: "Publica",
-    label: "Publica",
+    value: "public",
+    label: "Pública",
     description: "Aparece no mapa",
     icon: Globe2,
   },
   {
-    value: "Privada",
+    value: "private",
     label: "Privada",
     description: "Acesso restrito",
     icon: Lock,
@@ -136,6 +190,31 @@ function formatDate(value: string, options: Intl.DateTimeFormatOptions, fallback
   return new Intl.DateTimeFormat("pt-BR", options).format(new Date(`${value}T00:00:00`));
 }
 
+function normalizeZipCode(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 5) return digits;
+
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function buildFullAddress(address: AddressFields) {
+  const streetAndNumber = [address.street, address.number]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
+
+  return [
+    streetAndNumber,
+    address.neighborhood.trim(),
+    address.city.trim(),
+    address.zipCode.trim(),
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+
 export default function CreatePartyOrPlace() {
   const [, setLocation] = useLocation();
 
@@ -151,11 +230,13 @@ export default function CreatePartyOrPlace() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [openingHours, setOpeningHours] = useState<OpeningHours>(DEFAULT_OPENING_HOURS);
 
+  const createPlace = trpc.places.create.useMutation();
+
   const isParty = mode === "party";
   const title = isParty ? "Criar festa" : "Adicionar local";
   const subtitle = isParty
-    ? "Cadastre uma festa com data, horario e localizacao"
-    : "Cadastre um local fixo com horarios de funcionamento";
+    ? "Cadastre uma festa com data, horário e localização"
+    : "Cadastre um local fixo com horários de funcionamento";
 
   const formattedDate = useMemo(
     () =>
@@ -172,6 +253,11 @@ export default function CreatePartyOrPlace() {
     [form.date]
   );
 
+  const fullAddress = useMemo(
+    () => buildFullAddress(form.addressFields),
+    [form.addressFields]
+  );
+
   useEffect(() => {
     return () => {
       if (coverPreview) URL.revokeObjectURL(coverPreview);
@@ -180,6 +266,29 @@ export default function CreatePartyOrPlace() {
 
   function updateField(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function updateAddressField(field: keyof AddressFields, value: string) {
+    const safeValue = field === "zipCode" ? normalizeZipCode(value) : value;
+
+    setForm((prev) => {
+      const nextAddressFields = {
+        ...prev.addressFields,
+        [field]: safeValue,
+      };
+
+      const nextAddress = buildFullAddress(nextAddressFields);
+
+      return {
+        ...prev,
+        addressFields: nextAddressFields,
+        address: nextAddress,
+        confirmedLocation:
+          prev.confirmedLocation && prev.confirmedLocation === prev.address
+            ? nextAddress
+            : prev.confirmedLocation,
+      };
+    });
   }
 
   function handleCoverChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -224,20 +333,104 @@ export default function CreatePartyOrPlace() {
     }));
   }
 
-  function confirmLocation() {
-    const location = form.addressOrCoordinate.trim();
-    if (location) updateField("confirmedLocation", location);
+  async function confirmLocation() {
+  	try {
+  		const location =
+  			fullAddress.trim();
+    
+  		if (!location) return;
+    
+  		const response = await fetch(
+  			`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`
+  		);
+    
+  		const data =
+  			await response.json();
+    
+  		if (!data.length) {
+  			alert(
+  				"Endereço não encontrado"
+  			);
+      
+  			return;
+  		}
+    
+  		const result = data[0];
+    
+  		setForm((prev) => ({
+  			...prev,
+      
+  			confirmedLocation:
+  				result.display_name,
+      
+  			address:
+  				result.display_name,
+      
+  			lat: Number(result.lat),
+      
+  			lng: Number(result.lon),
+  		}));
+  	} catch (error) {
+  		console.error(error);
+  	}
   }
 
-  function handlePublish() {
-    const payload = {
-      type: mode,
-      ...form,
-      ...(isParty ? {} : { openingHours }),
-      coverFile,
-    };
+  const previewPlace: MapPlace[] =
+  	form.lat && form.lng
+  		? [
+  				{
+  					id: -1,
+          
+  					name:
+  						form.name ||
+  						"Novo local",
+          
+  					lat: form.lat,
+          
+  					lng: form.lng,
+          
+  					category:
+  						form.category,
+          
+  					address:
+  						form.confirmedLocation,
+  				},
+  		  ]
+  		: [];
 
-    console.log("Publicar", payload);
+  async function handlePublish() {
+    try {
+      const payload = {
+      	type: mode,
+      
+      	name: form.name,
+      
+      	address: form.address || fullAddress,
+      
+      	lat: (form.lat ?? 0).toString(),
+      	lng: (form.lng ?? 0).toString(),
+      
+      	category:
+      		mode === "party"
+      			? form.genre || "party"
+      			: form.category,
+      
+      	description: form.description,
+      
+      	imageUrl: form.imageUrl,
+      };
+    
+      console.log("ENVIANDO:", payload);
+    
+      const result =
+        await createPlace.mutateAsync(payload);
+    
+      console.log("CRIADO:", result);
+    
+      setLocation("/admin");
+    } catch (error) {
+      console.error("ERRO:", error);
+    }
   }
 
   function handleSaveDraft() {
@@ -255,7 +448,7 @@ export default function CreatePartyOrPlace() {
               active={isParty}
               icon={<PartyPopper size={24} />}
               title="Adicionar festa"
-              description="Evento com data, inicio e final"
+              description="Evento com data, início e final"
               onClick={() => setMode("party")}
             />
             <ModeButton
@@ -278,7 +471,7 @@ export default function CreatePartyOrPlace() {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(330px,0.9fr)]">
           <main className="space-y-5">
-            <Panel title="Informacoes principais">
+            <Panel title="Informações principais">
               <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
                 <Field label={isParty ? "Nome da festa" : "Nome do local"} icon={<BadgeCheck size={21} />}>
                   <input
@@ -289,7 +482,7 @@ export default function CreatePartyOrPlace() {
                   />
                 </Field>
 
-                <Field label={isParty ? "Genero" : "Categoria musical"} icon={<Music size={21} />}>
+                <Field label={isParty ? "Gênero" : "Categoria músical"} icon={<Music size={21} />}>
                   <GenreSelector
                     genres={genres}
                     selectedGenre={form.genre}
@@ -305,7 +498,7 @@ export default function CreatePartyOrPlace() {
               </div>
             </Panel>
 
-            <Panel title={isParty ? "Data e horario da festa" : "Funcionamento do local"}>
+            <Panel title={isParty ? "Data e horário da festa" : "Funcionamento do local"}>
               {isParty ? (
                 <PartySchedule
                   formattedDate={formattedDate}
@@ -323,7 +516,7 @@ export default function CreatePartyOrPlace() {
 
             <Panel title="Detalhes">
               <div className="space-y-5">
-                <Field label="Faixa etaria" icon={<ShieldCheck size={21} />}>
+                <Field label="Faixa etária" icon={<ShieldCheck size={21} />}>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {AGE_OPTIONS.map((option) => (
                       <HighlightOption
@@ -357,8 +550,15 @@ export default function CreatePartyOrPlace() {
                   <Field label="Capacidade" icon={<UsersRound size={21} />}>
                     <div className={cx(styles.input, "flex items-center gap-3")}>
                       <input
-                        value={form.capacity}
-                        onChange={(event) => updateField("capacity", event.target.value)}
+                        value={form.capacity ?? ""}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            capacity: event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          }))
+                        }
                         className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/30"
                         placeholder="800"
                         inputMode="numeric"
@@ -368,7 +568,7 @@ export default function CreatePartyOrPlace() {
                   </Field>
                 </div>
 
-                <Field label="Descricao" icon={<FileText size={21} />}>
+                <Field label="Descrição" icon={<FileText size={21} />}>
                   <textarea
                     value={form.description}
                     onChange={(event) => updateField("description", event.target.value)}
@@ -376,8 +576,8 @@ export default function CreatePartyOrPlace() {
                     className={cx(styles.input, "resize-none py-4 leading-relaxed")}
                     placeholder={
                       isParty
-                        ? "Descreva a experiencia da festa..."
-                        : "Descreva o local, ambiente, musica e diferenciais..."
+                        ? "Descreva a experiência da festa..."
+                        : "Descreva o local, ambiente, música e diferenciais..."
                     }
                   />
                 </Field>
@@ -386,18 +586,34 @@ export default function CreatePartyOrPlace() {
           </main>
 
           <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start">
-            <Panel title="Adicionar no mapa">
+            <Panel title="Endereço e mapa">
               <LocationEditor
-                addressOrCoordinate={form.addressOrCoordinate}
-                confirmedLocation={form.confirmedLocation}
-                onAddressChange={(value) => updateField("addressOrCoordinate", value)}
-                onConfirm={confirmLocation}
+              	addressFields={form.addressFields}
+              	fullAddress={fullAddress}
+              	confirmedLocation={form.confirmedLocation}
+
+              	previewPlace={previewPlace}
+
+              	mapCenter={
+              		form.lat && form.lng
+              			? [
+              					form.lat,
+              					form.lng,
+              			  ]
+              			: undefined
+              	}
+              
+              	onAddressFieldChange={
+              		updateAddressField
+              	}
+              
+              	onConfirm={confirmLocation}
               />
             </Panel>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <PrimaryAction onClick={handlePublish} icon={<Send size={24} />}>
-                {isParty ? "Publicar festa" : "Publicar local"}
+                {isParty ? "Públicar festa" : "Públicar local"}
               </PrimaryAction>
               <SecondaryAction onClick={handleSaveDraft} icon={<Save size={24} />}>
                 Salvar rascunho
@@ -546,7 +762,7 @@ function GenreSelector({
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Cancelar criacao de genero"
+            aria-label="Cancelar criação de genero"
             className={cx(styles.focus, "rounded-xl border border-white/10 px-3 py-2 text-white/60 transition hover:border-red-400/60 hover:text-red-400")}
           >
             <X size={18} />
@@ -596,7 +812,7 @@ function PartySchedule({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Horario de inicio" icon={<Clock size={21} />}>
+        <Field label="Horario de início" icon={<Clock size={21} />}>
           <input type="time" value={startTime} onChange={(event) => onChange("startTime", event.target.value)} className={styles.input} />
         </Field>
         <Field label="Horario de final" icon={<Clock size={21} />}>
@@ -638,57 +854,109 @@ function OpeningHoursEditor({
 }
 
 function LocationEditor({
-  addressOrCoordinate,
+  addressFields,
+  fullAddress,
   confirmedLocation,
-  onAddressChange,
+  previewPlace,
+  mapCenter,
+  onAddressFieldChange,
   onConfirm,
 }: {
-  addressOrCoordinate: string;
+  addressFields: AddressFields;
+  fullAddress: string;
   confirmedLocation: string;
-  onAddressChange: (value: string) => void;
+
+  previewPlace: MapPlace[];
+
+  mapCenter?: [number, number];
+
+  onAddressFieldChange: (
+    field: keyof AddressFields,
+    value: string
+  ) => void;
+
   onConfirm: () => void;
 }) {
   return (
     <div className="space-y-4">
-      <Field label="Endereco ou coordenada" icon={<MapPin size={21} />}>
-        <div className="space-y-3">
+      <Field label="Endereço da festa/local" icon={<MapPin size={21} />}>
+        <div className="grid gap-3">
           <input
-            value={addressOrCoordinate}
-            onChange={(event) => onAddressChange(event.target.value)}
+            value={addressFields.street}
+            onChange={(event) => onAddressFieldChange("street", event.target.value)}
             className={styles.input}
-            placeholder="Rua Augusta, 500 ou -23.5505, -46.6333"
+            placeholder="Rua"
+            autoComplete="address-line1"
           />
+
+          <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">
+            <input
+              value={addressFields.number}
+              onChange={(event) => onAddressFieldChange("number", event.target.value)}
+              className={styles.input}
+              placeholder="Número"
+              inputMode="numeric"
+              autoComplete="address-line2"
+            />
+
+            <input
+              value={addressFields.neighborhood}
+              onChange={(event) => onAddressFieldChange("neighborhood", event.target.value)}
+              className={styles.input}
+              placeholder="Bairro"
+              autoComplete="address-level3"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
+            <input
+              value={addressFields.city}
+              onChange={(event) => onAddressFieldChange("city", event.target.value)}
+              className={styles.input}
+              placeholder="Cidade"
+              autoComplete="address-level2"
+            />
+
+            <input
+              value={addressFields.zipCode}
+              onChange={(event) => onAddressFieldChange("zipCode", event.target.value)}
+              className={styles.input}
+              placeholder="CEP"
+              inputMode="numeric"
+              autoComplete="postal-code"
+            />
+          </div>
 
           <button
             type="button"
             onClick={onConfirm}
+            disabled={!fullAddress}
             className={cx(styles.action, styles.focus, "w-full border border-emerald-400 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400 hover:text-black hover:shadow-[0_0_22px_rgba(0,255,100,0.45)]")}
           >
             <Search size={20} />
-            Confirmar localizacao
+            Confirmar localização
           </button>
         </div>
       </Field>
 
-      <div className="relative h-72 overflow-hidden rounded-[28px] border border-white/10 bg-black">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,100,0.22),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.04)_25%,transparent_25%),linear-gradient(45deg,rgba(255,255,255,0.035)_25%,transparent_25%)] bg-[length:100%_100%,42px_42px,42px_42px] opacity-80" />
-        <MapPreviewMarker
-          active
-          main
-          label={confirmedLocation ? "Ponto confirmado" : "Novo ponto"}
-          description={confirmedLocation || "Informe endereco ou coordenada"}
-          className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        />
-        <MapPreviewMarker label="Local proximo" description="Referencia" className="left-[18%] top-[35%]" />
-        <MapPreviewMarker label="Area movimentada" description="Sugestao" className="right-[13%] top-[25%]" />
+      <div className="h-72 overflow-hidden rounded-[28px] border border-white/10">
+      	<LeafletMap
+      		places={previewPlace}
+      		center={mapCenter}
+      		zoom={16}
+      		showUserLocation={false}
+      		className="h-full w-full"
+      	/>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
         <div className="flex items-start gap-3">
           <Navigation className="mt-0.5 shrink-0 text-emerald-400" size={20} />
           <div className="min-w-0">
-            <p className="font-semibold text-white">Localizacao atual</p>
-            <p className="mt-1 break-words text-sm text-white/45">{confirmedLocation || "Nenhum ponto confirmado ainda."}</p>
+            <p className="font-semibold text-white">Localização atual</p>
+            <p className="mt-1 break-words text-sm text-white/45">
+              {confirmedLocation || fullAddress || "Nenhum endereço informado ainda."}
+            </p>
           </div>
         </div>
       </div>
