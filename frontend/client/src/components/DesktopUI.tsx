@@ -6,8 +6,6 @@ import {
   User,
   LogOut,
   Shield,
-  Users,
-  FileText,
 } from "lucide-react";
 
 import { useLocation, Link } from "wouter";
@@ -52,9 +50,7 @@ const defaultNavItems: NavItem[] = [
  */
 const adminNavItems: NavItem[] = [
   { href: "/admin", icon: Shield, label: "Admin" },
-  { href: "/users", icon: Users, label: "Usuários" },
   { href: "/", icon: MapPin, label: "Mapa" },
-  { href: "/reports", icon: FileText, label: "Relatórios" },
 ];
 
 /**

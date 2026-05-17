@@ -2,6 +2,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./cookies";
 import { systemRouter } from "./systemRouter";
+import { analyticsRouter } from "./analytic";
 import { publicProcedure, protectedProcedure, router } from "./trpc";
 import {
   createPlace,
@@ -25,6 +26,8 @@ import {
 
 export const appRouter = router({
   system: systemRouter,
+
+  analytics: analyticsRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

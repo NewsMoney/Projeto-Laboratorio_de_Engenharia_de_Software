@@ -6,8 +6,6 @@ import {
   User,
   Bell,
   Shield,
-  Users,
-  FileText,
 } from "lucide-react";
 
 
@@ -52,9 +50,7 @@ const defaultNavItems: NavItem[] = [
  */
 const adminNavItems: NavItem[] = [
   { href: "/admin", icon: Shield, label: "Admin" },
-  { href: "/users", icon: Users, label: "Usuários" },
   { href: "/", icon: MapPin, label: "Mapa" },
-  { href: "/reports", icon: FileText, label: "Relatórios" },
 ];
 
 /**

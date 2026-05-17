@@ -61,7 +61,7 @@ export default function Home() {
       className="fixed inset-0 flex flex-col md:flex-row overflow-hidden select-none" 
       style={{ background: theme.colors.background }}
     >
-      {/* 1. SIDEBAR (Apenas Desktop - acima de 768px) */}
+      {/* 1. SIDEBAR (Apenas Desktop - acima de 1024px) */}
       {!isMobile && <DesktopSidebar />}
 
       {/* 2. CONTEÚDO PRINCIPAL (MAPA + OVERLAYS) */}
