@@ -15,6 +15,10 @@ import Ranking from "./pages/Ranking";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import register from "./pages/Register";
+import AdminPage from "./pages/AdminPage"
+import ReportsPage from "./pages/ReportsPage"
+import CreatePartyOrPlace from "./pages/CreatyParty";
+import Usuarios from "./pages/UsersInfo";
 
 function Router() {
   return (
@@ -30,6 +34,10 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={register} />
+        <Route path="/admin" component={AdminPage} />
+        <Route path="/create-party" component={CreatePartyOrPlace} />
+        <Route path="/reports" component={ReportsPage} />
+        <Route path="/users-info" component={Usuarios} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

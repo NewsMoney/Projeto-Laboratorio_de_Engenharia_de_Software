@@ -1,0 +1,566 @@
+import { router, publicProcedure } from "./trpc";
+import { z } from "zod";
+import { getDb } from "./db";
+import { checkins, places, users } from "../drizzle/schema";
+import { eq, gte, lte, sql, desc, count, and } from "drizzle-orm";
+
+/**
+ * Helper para construir condições de data
+ */
+function buildDateConditions(
+  startDate?: string,
+  endDate?: string,
+  dateField?: any
+) {
+  const conditions = [];
+  if (startDate && dateField) {
+    conditions.push(gte(dateField, new Date(startDate)));
+  }
+  if (endDate && dateField) {
+    conditions.push(lte(dateField, new Date(endDate)));
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export const analyticsRouter = router({
+  /**
+   * Summary Stats - Estatísticas resumidas
+   */
+  summaryStats: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate } = input;
+      const db = await getDb();
+
+      if (!db) {
+        return {
+          totalUsers: 0,
+          totalCheckins: 0,
+          totalPlaces: 0,
+          activeUsers: 0,
+          avgRating: "0",
+        };
+      }
+
+      try {
+        // Total de usuários
+        const totalUsersResult = await db
+          .select({ count: count() })
+          .from(users);
+
+        // Total de check-ins no período
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const totalCheckinsResult = dateCondition
+          ? await db
+              .select({ count: count() })
+              .from(checkins)
+              .where(dateCondition)
+          : await db
+              .select({ count: count() })
+              .from(checkins);
+
+        // Total de locais
+        const totalPlacesResult = await db
+          .select({ count: count() })
+          .from(places);
+
+        // Usuários ativos (com check-ins no período)
+        const activeUsersResult = dateCondition
+          ? await db
+              .select({ count: count(sql`DISTINCT ${checkins.userId}`) })
+              .from(checkins)
+              .where(dateCondition)
+          : await db
+              .select({ count: count(sql`DISTINCT ${checkins.userId}`) })
+              .from(checkins);
+
+        // Rating médio
+        const avgRatingResult = await db
+          .select({
+            avgRating: sql<number>`AVG(${checkins.rating})`,
+          })
+          .from(checkins);
+
+        const avgRatingValue = avgRatingResult[0]?.avgRating ?? 0;
+        const avgRatingStr = typeof avgRatingValue === "number" 
+          ? avgRatingValue.toFixed(1) 
+          : String(avgRatingValue);
+
+        return {
+          totalUsers: totalUsersResult[0]?.count ?? 0,
+          totalCheckins: totalCheckinsResult[0]?.count ?? 0,
+          totalPlaces: totalPlacesResult[0]?.count ?? 0,
+          activeUsers: activeUsersResult[0]?.count ?? 0,
+          avgRating: avgRatingStr,
+        };
+      } catch (error) {
+        console.error("Error fetching summary stats:", error);
+        return {
+          totalUsers: 0,
+          totalCheckins: 0,
+          totalPlaces: 0,
+          activeUsers: 0,
+          avgRating: "0",
+        };
+      }
+    }),
+
+  /**
+   * Check-ins Timeline - Gráfico de check-ins ao longo do tempo
+   */
+  checkinsTimeline: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        days: z.number().default(7),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                date: sql<string>`DATE(${checkins.createdAt})`,
+                count: count(),
+              })
+              .from(checkins)
+              .where(dateCondition)
+              .groupBy(sql`DATE(${checkins.createdAt})`)
+              .orderBy(sql`DATE(${checkins.createdAt})`)
+          : await db
+              .select({
+                date: sql<string>`DATE(${checkins.createdAt})`,
+                count: count(),
+              })
+              .from(checkins)
+              .groupBy(sql`DATE(${checkins.createdAt})`)
+              .orderBy(sql`DATE(${checkins.createdAt})`);
+
+        // Normalizar para percentual
+        const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+        return data.map((item) => {
+          const dateStr = item.date;
+          const dateObj = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+          
+          return {
+            label: dateObj.toLocaleDateString("pt-BR", {
+              month: "2-digit",
+              day: "2-digit",
+            }),
+            value: item.count,
+            percentage: (item.count / maxCount) * 100,
+          };
+        });
+      } catch (error) {
+        console.error("Error fetching checkins timeline:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * Top Places - Locais mais visitados
+   */
+  topPlaces: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().default(5),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate, limit } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                placeId: checkins.placeId,
+                placeName: places.name,
+                checkinsCount: count(),
+                avgRating: sql<number>`AVG(${checkins.rating})`,
+              })
+              .from(checkins)
+              .innerJoin(places, eq(checkins.placeId, places.id))
+              .where(dateCondition)
+              .groupBy(checkins.placeId, places.name)
+              .orderBy(desc(count()))
+              .limit(limit)
+          : await db
+              .select({
+                placeId: checkins.placeId,
+                placeName: places.name,
+                checkinsCount: count(),
+                avgRating: sql<number>`AVG(${checkins.rating})`,
+              })
+              .from(checkins)
+              .innerJoin(places, eq(checkins.placeId, places.id))
+              .groupBy(checkins.placeId, places.name)
+              .orderBy(desc(count()))
+              .limit(limit);
+
+        // Normalizar para percentual
+        const totalCheckins = data.reduce((sum, d) => sum + d.checkinsCount, 0);
+
+        return data.map((item) => {
+          const ratingValue = item.avgRating ?? 0;
+          const ratingStr = typeof ratingValue === "number" 
+            ? ratingValue.toFixed(1) 
+            : String(ratingValue);
+
+          return {
+            id: item.placeId,
+            name: item.placeName,
+            checkins: item.checkinsCount,
+            avgRating: ratingStr,
+            percentage: totalCheckins > 0 ? (item.checkinsCount / totalCheckins) * 100 : 0,
+          };
+        });
+      } catch (error) {
+        console.error("Error fetching top places:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * Occupancy Distribution - Distribuição de ocupação
+   */
+  occupancyDistribution: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                occupancy: checkins.occupancy,
+                count: count(),
+              })
+              .from(checkins)
+              .where(dateCondition)
+              .groupBy(checkins.occupancy)
+          : await db
+              .select({
+                occupancy: checkins.occupancy,
+                count: count(),
+              })
+              .from(checkins)
+              .groupBy(checkins.occupancy);
+
+        const total = data.reduce((sum, d) => sum + d.count, 0);
+
+        return data.map((item) => ({
+          occupancy: item.occupancy || "unknown",
+          count: item.count,
+          percentage: total > 0 ? (item.count / total) * 100 : 0,
+        }));
+      } catch (error) {
+        console.error("Error fetching occupancy distribution:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * Top Rated Places - Locais melhor avaliados
+   */
+  topRatedPlaces: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().default(5),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate, limit } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                placeId: checkins.placeId,
+                placeName: places.name,
+                avgRating: sql<number>`AVG(${checkins.rating})`,
+                checkinsCount: count(),
+              })
+              .from(checkins)
+              .innerJoin(places, eq(checkins.placeId, places.id))
+              .where(dateCondition)
+              .groupBy(checkins.placeId, places.name)
+              .having(sql`COUNT(*) >= 2`)
+              .orderBy(desc(sql`AVG(${checkins.rating})`))
+              .limit(limit)
+          : await db
+              .select({
+                placeId: checkins.placeId,
+                placeName: places.name,
+                avgRating: sql<number>`AVG(${checkins.rating})`,
+                checkinsCount: count(),
+              })
+              .from(checkins)
+              .innerJoin(places, eq(checkins.placeId, places.id))
+              .groupBy(checkins.placeId, places.name)
+              .having(sql`COUNT(*) >= 2`)
+              .orderBy(desc(sql`AVG(${checkins.rating})`))
+              .limit(limit);
+
+        return data.map((item) => {
+          const ratingValue = item.avgRating ?? 0;
+          const ratingStr = typeof ratingValue === "number" 
+            ? ratingValue.toFixed(1) 
+            : String(ratingValue);
+
+          return {
+            id: item.placeId,
+            name: item.placeName,
+            avgRating: ratingStr,
+            checkinsCount: item.checkinsCount,
+          };
+        });
+      } catch (error) {
+        console.error("Error fetching top rated places:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * Most Active Users - Usuários mais ativos
+   */
+  mostActiveUsers: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().default(5),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate, limit } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                userId: checkins.userId,
+                userName: users.name,
+                checkinsCount: count(),
+                avgRating: sql<number>`AVG(${checkins.rating})`,
+              })
+              .from(checkins)
+              .innerJoin(users, eq(checkins.userId, users.id))
+              .where(dateCondition)
+              .groupBy(checkins.userId, users.name)
+              .orderBy(desc(count()))
+              .limit(limit)
+          : await db
+              .select({
+                userId: checkins.userId,
+                userName: users.name,
+                checkinsCount: count(),
+                avgRating: sql<number>`AVG(${checkins.rating})`,
+              })
+              .from(checkins)
+              .innerJoin(users, eq(checkins.userId, users.id))
+              .groupBy(checkins.userId, users.name)
+              .orderBy(desc(count()))
+              .limit(limit);
+
+        return data.map((item) => {
+          const ratingValue = item.avgRating ?? 0;
+          const ratingStr = typeof ratingValue === "number" 
+            ? ratingValue.toFixed(1) 
+            : String(ratingValue);
+
+          return {
+            id: item.userId,
+            name: item.userName,
+            checkins: item.checkinsCount,
+            avgRating: ratingStr,
+          };
+        });
+      } catch (error) {
+        console.error("Error fetching most active users:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * Rating Distribution - Distribuição de ratings
+   */
+  ratingDistribution: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          checkins.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                rating: checkins.rating,
+                count: count(),
+              })
+              .from(checkins)
+              .where(dateCondition)
+              .groupBy(checkins.rating)
+              .orderBy(checkins.rating)
+          : await db
+              .select({
+                rating: checkins.rating,
+                count: count(),
+              })
+              .from(checkins)
+              .groupBy(checkins.rating)
+              .orderBy(checkins.rating);
+
+        const total = data.reduce((sum, d) => sum + d.count, 0);
+
+        return data.map((item) => ({
+          rating: item.rating,
+          count: item.count,
+          percentage: total > 0 ? (item.count / total) * 100 : 0,
+        }));
+      } catch (error) {
+        console.error("Error fetching rating distribution:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * User Growth - Crescimento de usuários
+   */
+  userGrowth: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate } = input;
+      const db = await getDb();
+
+      if (!db) return [];
+
+      try {
+        const dateCondition = buildDateConditions(
+          startDate,
+          endDate,
+          users.createdAt
+        );
+
+        const data = dateCondition
+          ? await db
+              .select({
+                date: sql<string>`DATE(${users.createdAt})`,
+                count: count(),
+              })
+              .from(users)
+              .where(dateCondition)
+              .groupBy(sql`DATE(${users.createdAt})`)
+              .orderBy(sql`DATE(${users.createdAt})`)
+          : await db
+              .select({
+                date: sql<string>`DATE(${users.createdAt})`,
+                count: count(),
+              })
+              .from(users)
+              .groupBy(sql`DATE(${users.createdAt})`)
+              .orderBy(sql`DATE(${users.createdAt})`);
+
+        return data.map((item) => {
+          const dateStr = item.date;
+          const dateObj = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+
+          return {
+            date: dateObj.toLocaleDateString("pt-BR", {
+              month: "2-digit",
+              day: "2-digit",
+            }),
+            newUsers: item.count,
+          };
+        });
+      } catch (error) {
+        console.error("Error fetching user growth:", error);
+        return [];
+      }
+    }),
+});
