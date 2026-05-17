@@ -187,12 +187,12 @@ export default function Reports() {
     limit: 5,
   });
 
-  const stats = summaryStats ?? {
-    totalUsers: 0,
-    totalCheckins: 0,
-    totalPlaces: 0,
-    activeUsers: 0,
-    avgRating: 0,
+  const stats = {
+    totalUsers: summaryStats?.totalUsers ?? 0,
+    totalCheckins: summaryStats?.totalCheckins ?? 0,
+    totalPlaces: summaryStats?.totalPlaces ?? 0,
+    activeUsers: summaryStats?.activeUsers ?? 0,
+    avgRating: Number(summaryStats?.avgRating ?? 0),
   };
 
   const checkins = checkinsTimeline ?? [];
