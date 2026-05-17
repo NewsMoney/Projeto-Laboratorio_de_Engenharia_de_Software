@@ -8,8 +8,6 @@ import {
   MapPin,
   Clock,
   ChevronRight,
-  Eye,
-  ShieldCheck,
   Activity,
   TrendingUp,
 } from "lucide-react";

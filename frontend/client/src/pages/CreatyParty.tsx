@@ -247,7 +247,7 @@ export default function CreatePartyOrPlace() {
   return (
     <div className="min-h-screen overflow-y-auto px-4 py-5 md:px-8 md:py-7" style={{ background: theme.colors.background }}>
       <div className="mx-auto max-w-6xl pb-10">
-        <Header title={title} subtitle={subtitle} onBack={() => setLocation("/")} />
+        <Header title={title} subtitle={subtitle} onBack={() => setLocation("/admin")} />
 
         <section className={cx(styles.card, "mb-5 p-3")}>
           <div className="grid gap-3 md:grid-cols-2">
