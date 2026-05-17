@@ -73,7 +73,7 @@ const timeRangeOptions: Array<{
   label: string;
 }> = [
   { value: "day", label: "Hoje" },
-  { value: "week", label: "Esta semana" },
+  { value: "week", label: "Esta sem" },
   { value: "month", label: "Este mês" },
   { value: "year", label: "Este ano" },
 ];
