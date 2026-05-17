@@ -57,7 +57,7 @@ const adminNavItems: NavItem[] = [
  * @constant logo
  * @description Caminho para o ícone do logo da aplicação.
  */
-const logo = "src/components/logo-icon.png";
+import logo from "@/components/logo-icon.png";
 
 /* ================================================== */
 /* COMPONENTE BOTTOM NAV (MOBILE) */
