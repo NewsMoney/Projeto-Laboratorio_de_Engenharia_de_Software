@@ -6,7 +6,6 @@ import {
   Baby,
   Building2,
   CalendarDays,
-  Check,
   Clock,
   Eye,
   FileText,
@@ -28,9 +27,7 @@ import {
   X,
 } from "lucide-react";
 
-import LeafletMap, {
-	MapPlace,
-} from "@/components/LeafletMap";
+import LeafletMap, { MapPlace } from "@/components/LeafletMap";
 
 import { theme } from "@/lib/theme";
 import { trpc } from "@/lib/trpc";
@@ -87,7 +84,7 @@ const WEEK_DAYS = [
   { key: "wednesday", short: "QUA", label: "Quarta" },
   { key: "thursday", short: "QUI", label: "Quinta" },
   { key: "friday", short: "SEX", label: "Sexta" },
-  { key: "saturday", short: "SAB", label: "Sábado" },
+  { key: "saturday", short: "SÁB", label: "Sábado" },
   { key: "sunday", short: "DOM", label: "Domingo" },
 ] as const;
 
@@ -291,6 +288,13 @@ export default function CreatePartyOrPlace() {
     });
   }
 
+  function updateCapacity(value: string) {
+    setForm((prev) => ({
+      ...prev,
+      capacity: value ? Number(value) : null,
+    }));
+  }
+
   function handleCoverChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -334,99 +338,88 @@ export default function CreatePartyOrPlace() {
   }
 
   async function confirmLocation() {
-  	try {
-  		const location =
-  			fullAddress.trim();
-    
-  		if (!location) return;
-    
-  		const response = await fetch(
-  			`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`
-  		);
-    
-  		const data =
-  			await response.json();
-    
-  		if (!data.length) {
-  			alert(
-  				"Endereço não encontrado"
-  			);
-      
-  			return;
-  		}
-    
-  		const result = data[0];
-    
-  		setForm((prev) => ({
-  			...prev,
-      
-  			confirmedLocation:
-  				result.display_name,
-      
-  			address:
-  				result.display_name,
-      
-  			lat: Number(result.lat),
-      
-  			lng: Number(result.lon),
-  		}));
-  	} catch (error) {
-  		console.error(error);
-  	}
+    try {
+      const location = fullAddress.trim();
+
+      if (!location) return;
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          location
+        )}&format=json&limit=1`
+      );
+
+      const data = await response.json();
+
+      if (!data.length) {
+        alert("Endereço não encontrado");
+        return;
+      }
+
+      const result = data[0];
+
+      setForm((prev) => ({
+        ...prev,
+        confirmedLocation: result.display_name,
+        address: result.display_name,
+        lat: Number(result.lat),
+        lng: Number(result.lon),
+      }));
+    } catch (error) {
+      console.error("Erro ao confirmar localização:", error);
+    }
   }
 
-  const previewPlace: MapPlace[] =
-  	form.lat && form.lng
-  		? [
-  				{
-  					id: -1,
-          
-  					name:
-  						form.name ||
-  						"Novo local",
-          
-  					lat: form.lat,
-          
-  					lng: form.lng,
-          
-  					category:
-  						form.category,
-          
-  					address:
-  						form.confirmedLocation,
-  				},
-  		  ]
-  		: [];
+  const mapCenter = useMemo<[number, number] | undefined>(() => {
+    if (!form.lat || !form.lng) return undefined;
+
+    return [form.lat, form.lng];
+  }, [form.lat, form.lng]);
+
+  const previewPlace = useMemo<MapPlace[]>(() => {
+    if (!form.lat || !form.lng) return [];
+
+    return [
+      {
+        id: -1,
+        name: form.name || "Novo local",
+        lat: form.lat,
+        lng: form.lng,
+        category: isParty ? form.genre || "party" : form.category,
+        address: form.confirmedLocation || form.address || fullAddress,
+      },
+    ];
+  }, [
+    form.address,
+    form.category,
+    form.confirmedLocation,
+    form.genre,
+    form.lat,
+    form.lng,
+    form.name,
+    fullAddress,
+    isParty,
+  ]);
 
   async function handlePublish() {
     try {
       const payload = {
-      	type: mode,
-      
-      	name: form.name,
-      
-      	address: form.address || fullAddress,
-      
-      	lat: (form.lat ?? 0).toString(),
-      	lng: (form.lng ?? 0).toString(),
-      
-      	category:
-      		mode === "party"
-      			? form.genre || "party"
-      			: form.category,
-      
-      	description: form.description,
-      
-      	imageUrl: form.imageUrl,
+        type: mode,
+        name: form.name,
+        address: form.address || fullAddress,
+        lat: (form.lat ?? 0).toString(),
+        lng: (form.lng ?? 0).toString(),
+        category: mode === "party" ? form.genre || "party" : form.category,
+        description: form.description,
+        imageUrl: form.imageUrl,
       };
-    
+
       console.log("ENVIANDO:", payload);
-    
-      const result =
-        await createPlace.mutateAsync(payload);
-    
+
+      const result = await createPlace.mutateAsync(payload);
+
       console.log("CRIADO:", result);
-    
+
       setLocation("/admin");
     } catch (error) {
       console.error("ERRO:", error);
@@ -482,7 +475,7 @@ export default function CreatePartyOrPlace() {
                   />
                 </Field>
 
-                <Field label={isParty ? "Gênero" : "Categoria músical"} icon={<Music size={21} />}>
+                <Field label={isParty ? "Gênero" : "Categoria musical"} icon={<Music size={21} />}>
                   <GenreSelector
                     genres={genres}
                     selectedGenre={form.genre}
@@ -551,14 +544,7 @@ export default function CreatePartyOrPlace() {
                     <div className={cx(styles.input, "flex items-center gap-3")}>
                       <input
                         value={form.capacity ?? ""}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            capacity: event.target.value
-                              ? Number(event.target.value)
-                              : null,
-                          }))
-                        }
+                        onChange={(event) => updateCapacity(event.target.value)}
                         className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/30"
                         placeholder="800"
                         inputMode="numeric"
@@ -588,32 +574,19 @@ export default function CreatePartyOrPlace() {
           <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start">
             <Panel title="Endereço e mapa">
               <LocationEditor
-              	addressFields={form.addressFields}
-              	fullAddress={fullAddress}
-              	confirmedLocation={form.confirmedLocation}
-
-              	previewPlace={previewPlace}
-
-              	mapCenter={
-              		form.lat && form.lng
-              			? [
-              					form.lat,
-              					form.lng,
-              			  ]
-              			: undefined
-              	}
-              
-              	onAddressFieldChange={
-              		updateAddressField
-              	}
-              
-              	onConfirm={confirmLocation}
+                addressFields={form.addressFields}
+                fullAddress={fullAddress}
+                confirmedLocation={form.confirmedLocation}
+                previewPlace={previewPlace}
+                mapCenter={mapCenter}
+                onAddressFieldChange={updateAddressField}
+                onConfirm={confirmLocation}
               />
             </Panel>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <PrimaryAction onClick={handlePublish} icon={<Send size={24} />}>
-                {isParty ? "Públicar festa" : "Públicar local"}
+                {isParty ? "Publicar festa" : "Publicar local"}
               </PrimaryAction>
               <SecondaryAction onClick={handleSaveDraft} icon={<Save size={24} />}>
                 Salvar rascunho
@@ -762,7 +735,7 @@ function GenreSelector({
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Cancelar criação de genero"
+            aria-label="Cancelar criação de gênero"
             className={cx(styles.focus, "rounded-xl border border-white/10 px-3 py-2 text-white/60 transition hover:border-red-400/60 hover:text-red-400")}
           >
             <X size={18} />
@@ -812,10 +785,10 @@ function PartySchedule({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Horario de início" icon={<Clock size={21} />}>
+        <Field label="Horário de início" icon={<Clock size={21} />}>
           <input type="time" value={startTime} onChange={(event) => onChange("startTime", event.target.value)} className={styles.input} />
         </Field>
-        <Field label="Horario de final" icon={<Clock size={21} />}>
+        <Field label="Horário de final" icon={<Clock size={21} />}>
           <input type="time" value={endTime} onChange={(event) => onChange("endTime", event.target.value)} className={styles.input} />
         </Field>
       </div>
@@ -1140,41 +1113,6 @@ function OpeningHourRow({
       >
         {enabled ? "Aberto" : "Fechado"}
       </button>
-    </div>
-  );
-}
-
-function MapPreviewMarker({
-  label,
-  description,
-  active = false,
-  main = false,
-  className,
-}: {
-  label: string;
-  description: string;
-  active?: boolean;
-  main?: boolean;
-  className?: string;
-}) {
-  return (
-    <div className={cx("absolute", className)}>
-      <div className="relative flex flex-col items-center">
-        <div
-          className={cx(
-            "flex items-center justify-center rounded-full border shadow-[0_0_20px_rgba(0,255,100,0.4)]",
-            main ? "h-16 w-16" : "h-11 w-11",
-            active ? "border-emerald-400 bg-emerald-400 text-black" : "border-emerald-400/70 bg-black/75 text-emerald-400"
-          )}
-        >
-          {active ? <Check size={main ? 30 : 22} /> : <MapPin size={main ? 30 : 22} />}
-        </div>
-
-        <div className="mt-2 min-w-36 max-w-44 rounded-2xl border border-emerald-400/30 bg-black/80 px-3 py-2 text-center backdrop-blur">
-          <p className="text-xs font-bold text-emerald-400">{label}</p>
-          <p className="mt-0.5 line-clamp-1 text-[11px] text-white/45">{description}</p>
-        </div>
-      </div>
     </div>
   );
 }
