@@ -31,7 +31,7 @@ export { StatCard } from "./StatCard";
 export { AppLayout } from "./AppLayout";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as LeafletMap } from "./LeafletMap";
-export { default as LoginDialog } from "./LoginDialog";
+export { LoginDialog } from "./LoginDialog";
 
 /* Componentes de interface Desktop e Mobile */
 export { DesktopSidebar } from "./DesktopUI";

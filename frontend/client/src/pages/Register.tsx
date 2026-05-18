@@ -61,8 +61,7 @@ export default function Register() {
         username,
         email,
         password,
-        gender: gender || undefined,
-        birthDate,
+        birthDate: birthDate as string,
       });
       await utils.auth.me.invalidate();
       setLocation("/");

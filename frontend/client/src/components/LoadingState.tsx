@@ -13,6 +13,8 @@ interface LoadingStateProps {
   size?: number;
   /** Classes CSS adicionais para o container */
   className?: string;
+  /** mensagem enviada ao sistema */
+  message?: string;
 }
 
 /**
@@ -27,15 +29,26 @@ interface LoadingStateProps {
  * // Com tamanho personalizado
  * {isLoading && <LoadingState size={32} />}
  */
-export function LoadingState({ size = 24, className = "" }: LoadingStateProps) {
+export function LoadingState({ size = 24, className = "", message,}: LoadingStateProps) {
   return (
-    <div className={`flex items-center justify-center py-12 ${className}`}>
+    <div
+      className={`flex flex-col items-center justify-center py-12 ${className}`}
+    >
       <Loader2
         size={size}
         className="animate-spin"
         style={{ color: theme.colors.primary }}
         aria-label="Carregando..."
       />
+
+      {message && (
+        <p
+          className="mt-3 text-sm"
+          style={{ color: theme.colors.textMuted }}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 }
