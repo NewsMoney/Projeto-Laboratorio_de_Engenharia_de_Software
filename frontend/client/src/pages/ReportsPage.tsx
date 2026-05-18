@@ -1,3 +1,12 @@
+/**
+ * @file ReportsPage.tsx
+ * @description Página de relatórios analíticos da plataforma.
+ * Exibe métricas detalhadas com filtros de período (dia, semana, mês, ano)
+ * e intervalo de datas personalizado. Inclui gráficos de barras e linha para
+ * visualização de check-ins por hora, ocupação e tendências.
+ * Adaptada para desktop (sidebar) e mobile (bottom nav + header).
+ */
+
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -32,6 +41,11 @@ import {
   Zap,
 } from "lucide-react";
 
+/* ================================================== */
+/* TIPOS */
+/* ================================================== */
+
+/** Intervalo de datas para filtro de relatórios */
 type DateRange = {
   start: string;
   end: string;
@@ -63,6 +77,11 @@ type MetricCardData = {
   onAction?: () => void;
 };
 
+/* ================================================== */
+/* CONSTANTES E UTILITÁRIOS */
+/* ================================================== */
+
+/** Intervalo vazio — usado para queries sem filtro de data */
 const EMPTY_DATE_RANGE: DateRange = {
   start: "",
   end: "",
@@ -78,20 +97,37 @@ const timeRangeOptions: Array<{
   { value: "year", label: "Este ano" },
 ];
 
+/**
+ * @function formatDateToInput
+ * @description Converte um objeto Date para o formato de input date (YYYY-MM-DD).
+ */
 function formatDateToInput(date: Date) {
   return date.toISOString().split("T")[0];
 }
 
+/**
+ * @function subtractDays
+ * @description Retorna uma nova data subtraindo N dias da data fornecida.
+ */
 function subtractDays(date: Date, days: number) {
   const result = new Date(date);
   result.setDate(result.getDate() - days);
   return result;
 }
 
+/**
+ * @function getTodayInputDate
+ * @description Retorna a data de hoje no formato de input (YYYY-MM-DD).
+ */
 function getTodayInputDate() {
   return formatDateToInput(new Date());
 }
 
+/**
+ * @function getRangeFromToday
+ * @description Calcula o intervalo de datas a partir de hoje para um período pré-definido.
+ * @param range - O período desejado (day, week, month, year)
+ */
 function getRangeFromToday(range: TimeRange): DateRange {
   const today = new Date();
 
@@ -108,11 +144,21 @@ function getRangeFromToday(range: TimeRange): DateRange {
   };
 }
 
+/**
+ * @function clampEndDate
+ * @description Garante que a data final não ultrapasse a data de hoje.
+ * Evita seleção de datas futuras no filtro de relatórios.
+ */
 function clampEndDate(value: string, today: string) {
   if (!value) return value;
   return value > today ? today : value;
 }
 
+/**
+ * @function getOccupancyColor
+ * @description Retorna a cor correspondente ao status de ocupação.
+ * Usado nos gráficos de barras de ocupação.
+ */
 function getOccupancyColor(occupancyStatus: string) {
   switch (occupancyStatus) {
     case "empty":
@@ -126,6 +172,10 @@ function getOccupancyColor(occupancyStatus: string) {
   }
 }
 
+/**
+ * @function getOccupancyLabel
+ * @description Retorna o rótulo em português para o status de ocupação.
+ */
 function getOccupancyLabel(occupancyStatus: string) {
   switch (occupancyStatus) {
     case "empty":
@@ -139,6 +189,16 @@ function getOccupancyLabel(occupancyStatus: string) {
   }
 }
 
+/* ================================================== */
+/* PÁGINA PRINCIPAL */
+/* ================================================== */
+
+/**
+ * @component Reports
+ * @description Página de relatórios com métricas, filtros e gráficos.
+ * Gerencia o estado dos filtros de data e período, busca todos os dados
+ * analíticos via tRPC e coordena os sub-componentes de visualização.
+ */
 export default function Reports() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -501,6 +561,15 @@ export default function Reports() {
   );
 }
 
+/* ================================================== */
+/* COMPONENTES INTERNOS */
+/* ================================================== */
+
+/**
+ * @component ReportsHero
+ * @description Cabeçalho da página de relatórios com botão de voltar e mini-cards de KPIs.
+ * Exibe check-ins totais, usuários ativos e avaliação média em destaque.
+ */
 function ReportsHero({
   stats,
   onBack,
@@ -570,6 +639,12 @@ function ReportsHero({
   );
 }
 
+/**
+ * @component FiltersBar
+ * @description Barra de filtros com seleção de datas e períodos rápidos.
+ * Permite filtrar todos os dados da página por intervalo de datas personalizado
+ * ou por atalhos pré-definidos (hoje, semana, mês, ano).
+ */
 function FiltersBar({
   dateRange,
   today,
@@ -631,6 +706,12 @@ function FiltersBar({
   );
 }
 
+/**
+ * @component DashboardMetrics
+ * @description Grade de cards de métricas expansíveis.
+ * Quando nenhum card está expandido, exibe todos em grade.
+ * Quando um card é expandido, exibe seus detalhes em destaque e os demais como mini-botões.
+ */
 function DashboardMetrics({
   metrics,
   expandedMetric,
@@ -681,6 +762,11 @@ function DashboardMetrics({
   );
 }
 
+/**
+ * @component Panel
+ * @description Container de seção com título, descrição e conteúdo filho.
+ * Usado para agrupar visualmente blocos de gráficos e listas na página.
+ */
 function Panel({
   title,
   description,

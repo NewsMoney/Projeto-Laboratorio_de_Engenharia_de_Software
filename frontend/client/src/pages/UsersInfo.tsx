@@ -1,3 +1,11 @@
+/**
+ * @file UsersInfo.tsx
+ * @description Página de gerenciamento de usuários (painel administrativo).
+ * Lista todos os usuários cadastrados com filtros por nome, role e ordenação.
+ * Permite criar novos usuários admin/moderador e alterar roles existentes.
+ * Acessível apenas para administradores.
+ */
+
 import { useMemo, useState } from "react";
 
 import { useLocation } from "wouter";
@@ -22,6 +30,11 @@ import { theme } from "@/lib/theme";
 
 import { trpc } from "@/lib/trpc";
 
+/* ================================================== */
+/* TIPOS */
+/* ================================================== */
+
+/** Roles possíveis para uma conta de usuário */
 type AccountRole =
   | "admin"
   | "moderator"
@@ -37,13 +50,21 @@ const roleLabels = {
   user: "Usuário",
 };
 
+/* ================================================== */
+/* PÁGINA PRINCIPAL */
+/* ================================================== */
+
+/**
+ * @component Usuarios
+ * @description Página de gerenciamento de usuários.
+ * Busca todos os usuários, aplica filtros localmente e exibe em lista.
+ * Permite criar novos usuários e alterar roles via modais.
+ */
 export default function Usuarios() {
   const [, setLocation] =
     useLocation();
 
-  /**
-   * FILTERS
-   */
+  /* Estado dos filtros de busca e ordenação */
   const [query, setQuery] =
     useState("");
 
@@ -56,9 +77,7 @@ export default function Usuarios() {
   const [sortBy, setSortBy] =
     useState("recent");
 
-  /**
-   * CREATE MODAL
-   */
+  /* Estado do modal de criação de novo usuário */
   const [isCreateOpen, setIsCreateOpen] =
     useState(false);
 
@@ -76,24 +95,18 @@ export default function Usuarios() {
 
   const utils = trpc.useUtils();
 
-  /**
-   * USERS QUERY
-   */
+  /* Busca todos os usuários via tRPC */
   const {
     data: usersData = [],
     isLoading,
   } =
     trpc.users.getAll.useQuery();
 
-  /**
-   * REGISTER
-   */
+  /* Mutation para registrar novo usuário */
   const registerUser =
     trpc.auth.register.useMutation();
 
-  /**
-   * UPDATE ROLE
-   */
+  /* Mutation para atualizar o role de um usuário */
   const updateRole =
     trpc.users.updateRole.useMutation({
       onSuccess:

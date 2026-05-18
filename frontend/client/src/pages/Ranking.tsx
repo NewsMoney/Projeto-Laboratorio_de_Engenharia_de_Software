@@ -1,107 +1,63 @@
-import { trpc } from "@/lib/trpc";
-import { theme } from "@/lib/theme";
-
-import {
-  ArrowLeft,
-  Star,
-  MapPin,
-  Loader2,
-} from "lucide-react";
+/**
+ * @file Ranking.tsx
+ * @description Página de ranking dos locais mais visitados.
+ * Exibe uma lista ordenada de locais com base no número de check-ins
+ * e avaliação média, permitindo ao usuário navegar para os detalhes de cada local.
+ */
 
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { theme } from "@/lib/theme";
+import { MapPin, Star } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { LoadingState } from "@/components/LoadingState";
+import { EmptyState } from "@/components/EmptyState";
 
 /* ================================================== */
-/* RANKING */
+/* PÁGINA PRINCIPAL */
 /* ================================================== */
 
+/**
+ * @component Ranking
+ * @description Página de ranking que lista os locais mais populares.
+ * Usa os componentes centralizados PageHeader, LoadingState e EmptyState.
+ */
 export default function Ranking() {
-  const [, setLocation] =
-    useLocation();
+  const [, setLocation] = useLocation();
 
-  const {
-    data: topPlaces,
-    isLoading:
-      placesLoading,
-  } =
-    trpc.ranking.topPlaces.useQuery(
-      {
-        limit: 20,
-      }
-    );
+  /* Busca os locais mais visitados via tRPC */
+  const { data: topPlaces, isLoading: placesLoading } = trpc.places.topPlaces.useQuery({ limit: 50 });
 
   return (
     <div
-      className="flex-1 flex flex-col min-h-screen"
-      style={{
-        background:
-          theme.colors.background,
-        color:
-          theme.colors.text,
-      }}
+      className="flex-1 min-h-screen flex flex-col"
+      style={{ background: theme.colors.background, color: theme.colors.text }}
     >
-      {/* HEADER */}
-      <header
-        className="px-4 py-3 flex items-center gap-3 border-b lg:hidden"
-        style={{
-          background:
-            theme.colors.surface,
-          borderColor:
-            theme.colors.border,
-        }}
-      >
-        <button
-          onClick={() =>
-            setLocation("/")
-          }
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{
-            background:
-              theme.colors.surfaceSoft,
-          }}
-        >
-          <ArrowLeft
-            size={18}
-          />
-        </button>
+      {/* Cabeçalho com botão de voltar — usa PageHeader centralizado */}
+      <PageHeader title="Ranking de Locais" onBack={() => setLocation("/")} />
 
-        <h1 className="text-base font-bold">
-          Ranking de Locais
-        </h1>
-      </header>
-
-      {/* CONTENT */}
+      {/* Conteúdo principal com scroll */}
       <div className="flex-1 overflow-y-auto p-4">
+        {/* Estado de carregamento — usa LoadingState centralizado */}
         {placesLoading ? (
           <LoadingState />
-        ) : !topPlaces ||
-          topPlaces.length ===
-            0 ? (
-          <EmptyState />
+        ) : !topPlaces || topPlaces.length === 0 ? (
+          /* Estado vazio — usa EmptyState centralizado */
+          <EmptyState
+            message="Nenhum local com check-ins ainda"
+            subMessage="Explore o mapa e faça check-ins"
+          />
         ) : (
+          /* Lista de locais ranqueados */
           <div className="space-y-2">
-            {topPlaces.map(
-              (
-                place,
-                index
-              ) => (
-                <RankCard
-                  key={
-                    place.id
-                  }
-                  place={
-                    place
-                  }
-                  index={
-                    index
-                  }
-                  onOpen={() =>
-                    setLocation(
-                      `/details/${place.id}`
-                    )
-                  }
-                />
-              )
-            )}
+            {topPlaces.map((place, index) => (
+              <RankCard
+                key={place.id}
+                place={place}
+                index={index}
+                onOpen={() => setLocation(`/details/${place.id}`)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -110,151 +66,59 @@ export default function Ranking() {
 }
 
 /* ================================================== */
-/* STATES */
+/* COMPONENTES INTERNOS */
 /* ================================================== */
 
-function LoadingState() {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <Loader2
-        size={24}
-        className="animate-spin"
-        style={{
-          color:
-            theme.colors.primary,
-        }}
-      />
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16">
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-        style={{
-          background:
-            theme.colors.surface,
-          border: `1px solid ${theme.colors.border}`,
-        }}
-      >
-        <MapPin
-          size={30}
-          style={{
-            color:
-              theme.colors.textMuted,
-          }}
-        />
-      </div>
-
-      <p
-        className="text-sm font-medium"
-        style={{
-          color:
-            theme.colors.textMuted,
-        }}
-      >
-        Nenhum local com check-ins ainda
-      </p>
-
-      <p
-        className="text-xs mt-1"
-        style={{
-          color:
-            theme.colors.textMuted,
-          opacity: 0.7,
-        }}
-      >
-        Explore o mapa e faça check-ins
-      </p>
-    </div>
-  );
-}
-
-/* ================================================== */
-/* CARD */
-/* ================================================== */
-
-function RankCard({
-  place,
-  index,
-  onOpen,
-}: any) {
+/**
+ * @component RankCard
+ * @description Card de um local no ranking.
+ * Exibe a posição, nome, endereço, número de check-ins e avaliação média.
+ *
+ * @param place - Dados do local
+ * @param index - Posição no ranking (0-based)
+ * @param onOpen - Função chamada ao clicar para ver detalhes
+ */
+function RankCard({ place, index, onOpen }: any) {
   return (
     <button
       onClick={onOpen}
       className="w-full rounded-xl border p-3.5 flex items-center gap-3 text-left transition"
       style={{
-        background:
-          theme.colors.surface,
-        borderColor:
-          theme.colors.border,
+        background: theme.colors.surface,
+        borderColor: theme.colors.border,
       }}
     >
-      {/* POSIÇÃO */}
+      {/* Posição no ranking */}
       <div
         className="w-8 text-center text-sm font-bold"
-        style={{
-          color:
-            theme.colors.primary,
-        }}
+        style={{ color: theme.colors.primary }}
       >
         #{index + 1}
       </div>
 
-      {/* ICON */}
+      {/* Ícone do local */}
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{
-          background:
-            theme.colors.surfaceSoft,
-        }}
+        style={{ background: theme.colors.surfaceSoft }}
       >
-        <MapPin
-          size={18}
-          style={{
-            color:
-              theme.colors.primary,
-          }}
-        />
+        <MapPin size={18} style={{ color: theme.colors.primary }} />
       </div>
 
-      {/* INFO */}
+      {/* Informações do local */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate">
-          {place.name}
-        </p>
-
-        <p
-          className="text-xs"
-          style={{
-            color:
-              theme.colors.textMuted,
-          }}
-        >
-          {Number(
-            place.checkinCount
-          )}{" "}
-          check-ins
+        <p className="text-sm font-semibold truncate">{place.name}</p>
+        <p className="text-xs" style={{ color: theme.colors.textMuted }}>
+          {Number(place.checkinCount)} check-ins
         </p>
       </div>
 
-      {/* RATING */}
+      {/* Avaliação média, exibida apenas se existir */}
       <div className="text-right min-w-[48px]">
-        {Number(
-          place.avgRating
-        ) > 0 && (
+        {Number(place.avgRating) > 0 && (
           <div className="flex items-center justify-end gap-1">
-            <Star
-              size={12}
-              className="fill-yellow-500 text-yellow-500"
-            />
-
+            <Star size={12} className="fill-yellow-500 text-yellow-500" />
             <span className="text-xs font-semibold">
-              {Number(
-                place.avgRating
-              ).toFixed(1)}
+              {Number(place.avgRating).toFixed(1)}
             </span>
           </div>
         )}

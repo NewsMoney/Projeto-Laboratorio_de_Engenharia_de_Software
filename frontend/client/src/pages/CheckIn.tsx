@@ -1,268 +1,101 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+/**
+ * @file CheckIn.tsx
+ * @description Página de check-in em um local.
+ * Permite ao usuário registrar sua presença em um local, fornecendo
+ * uma avaliação (1-5 estrelas), comentário e nível de ocupação.
+ * O fluxo é dividido em dois passos: seleção do local e preenchimento da avaliação.
+ */
+
+import { useState } from "react";
+import { useRoute, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { theme } from "@/lib/theme";
-
-import {
-  ArrowLeft,
-  Search,
-  Star,
-  MapPin,
-  Loader2,
-  CheckCircle,
-} from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { MapPin } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { LoadingState } from "@/components/LoadingState";
+import { PageCard } from "@/components/PageCard";
+import { PageCenter } from "@/components/PageCenter";
+import { StarRating } from "@/components/StarRating";
 
 /* ================================================== */
-/* CHECK IN */
+/* PÁGINA PRINCIPAL */
 /* ================================================== */
 
+/**
+ * @component CheckIn
+ * @description Página de check-in com fluxo de dois passos.
+ * Passo 1: Seleção do local (se não vier pela URL).
+ * Passo 2: Preenchimento de avaliação, comentário e ocupação.
+ */
 export default function CheckIn() {
-  const [, setLocation] =
-    useLocation();
+  const [, params] = useRoute("/checkin/:id");
+  const [, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
 
-  const { isAuthenticated } =
-    useAuth();
+  /* Estado do fluxo de check-in */
+  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [occupancy, setOccupancy] = useState<"empty" | "moderate" | "full" | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const [step, setStep] =
-    useState<
-      "select" | "review"
-    >("select");
+  /* Busca os locais disponíveis para seleção */
+  const { data: places, isLoading: placesLoading } = trpc.places.topPlaces.useQuery({ limit: 50 });
 
-  const [coords, setCoords] =
-    useState<{
-      lat: number;
-      lng: number;
-    } | null>(null);
+  /* Busca o local pré-selecionado via URL (ex: /checkin/42) */
+  const placeId = params?.id ? parseInt(params.id, 10) : 0;
+  const { data: preselectedPlace } = trpc.places.getById.useQuery(
+    { id: placeId },
+    { enabled: placeId > 0 }
+  );
 
-  const [search, setSearch] =
-    useState("");
+  /* Define o local selecionado: via URL ou via seleção manual */
+  const activePlace = selectedPlace ?? preselectedPlace ?? null;
 
-  const [
-    selectedPlace,
-    setSelectedPlace,
-  ] = useState<any>(null);
+  /* Mutation para registrar o check-in via tRPC */
+  const checkinMutation = trpc.checkins.create.useMutation();
 
-  const [rating, setRating] =
-    useState(0);
-
-  const [comment, setComment] =
-    useState("");
-
-  const [
-    occupancy,
-    setOccupancy,
-  ] = useState<
-    | "empty"
-    | "moderate"
-    | "full"
-    | undefined
-  >();
-
-  const [submitted, setSubmitted] =
-    useState(false);
-
-  /* ---------------------------------- */
-  /* AUTH */
-  /* ---------------------------------- */
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation("/login");
-    }
-  }, [
-    isAuthenticated,
-    setLocation,
-  ]);
-
-  /* ---------------------------------- */
-  /* GEOLOCATION */
-  /* ---------------------------------- */
-
-  useEffect(() => {
-    if (!isAuthenticated)
-      return;
-
-    const fallback = {
-      lat: -23.5505,
-      lng: -46.6333,
-    };
-
-    if (
-      !(
-        "geolocation" in
-        navigator
-      )
-    ) {
-      setCoords(fallback);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({
-          lat: pos.coords
-            .latitude,
-          lng: pos.coords
-            .longitude,
-        });
-      },
-      () =>
-        setCoords(fallback),
-      { timeout: 5000 }
-    );
-  }, [isAuthenticated]);
-
-  /* ---------------------------------- */
-  /* QUERY */
-  /* ---------------------------------- */
-
-  const {
-    data: places,
-    isLoading,
-  } =
-    trpc.places.nearby.useQuery(
-      {
-        lat:
-          coords?.lat ??
-          -23.5505,
-        lng:
-          coords?.lng ??
-          -46.6333,
-        limit: 20,
-      },
-      {
-        enabled:
-          !!coords &&
-          isAuthenticated,
-      }
-    );
-
-  const filteredPlaces =
-    useMemo(() => {
-      if (!places) return [];
-
-      if (!search.trim())
-        return places;
-
-      return places.filter(
-        (p) =>
-          p.name
-            .toLowerCase()
-            .includes(
-              search.toLowerCase()
-            )
-      );
-    }, [places, search]);
-
-  const utils =
-    trpc.useUtils();
-
-  const checkinMutation =
-    trpc.checkins.create.useMutation(
-      {
-        onSuccess: () => {
-          setSubmitted(true);
-
-          toast.success(
-            "Check-in realizado com sucesso!"
-          );
-
-          utils.ranking.topPlaces.invalidate();
-        },
-
-        onError: (
-          err
-        ) => {
-          toast.error(
-            err.message ||
-              "Erro ao realizar check-in"
-          );
-        },
-      }
-    );
-
-  /* ---------------------------------- */
-  /* ACTIONS */
-  /* ---------------------------------- */
-
-  function handleSubmit() {
-    if (!selectedPlace) {
-      toast.error(
-        "Selecione um local"
-      );
-      return;
-    }
-
-    if (rating === 0) {
-      toast.error(
-        "Escolha uma nota"
-      );
-      return;
-    }
-
-    checkinMutation.mutate({
-      placeId:
-        selectedPlace.id,
-      rating,
-      comment:
-        comment.trim() ||
-        undefined,
-      occupancy,
-    });
-  }
-
-  /* ---------------------------------- */
-  /* STATES */
-  /* ---------------------------------- */
-
-  if (!isAuthenticated)
-    return null;
-
-  if (!coords || isLoading) {
+  /* Redireciona para login se o usuário não estiver autenticado */
+  if (!isAuthenticated) {
     return (
       <PageCenter>
-        <Loader2
-          size={32}
-          className="animate-spin"
-          style={{
-            color:
-              theme.colors.primary,
-          }}
-        />
+        <p className="text-sm mb-4" style={{ color: theme.colors.textMuted }}>
+          Você precisa estar logado para fazer check-in.
+        </p>
+        <Button
+          onClick={() => setLocation("/login")}
+          style={{ background: theme.colors.primary, color: theme.colors.background }}
+        >
+          Entrar
+        </Button>
       </PageCenter>
     );
   }
 
-  if (submitted) {
+  /* Estado de sucesso: check-in realizado com sucesso */
+  if (done) {
     return (
       <PageCenter>
-        <CheckCircle
-          size={44}
-          style={{
-            color:
-              theme.colors.primary,
-          }}
-        />
-
-        <h2 className="text-xl font-bold mt-4">
-          Check-in confirmado
-        </h2>
-
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+          style={{ background: theme.colors.primary }}
+        >
+          <MapPin size={30} style={{ color: theme.colors.background }} />
+        </div>
+        <h2 className="text-xl font-bold mb-2">Check-in realizado!</h2>
+        <p className="text-sm mb-6" style={{ color: theme.colors.textMuted }}>
+          Obrigado pela sua avaliação.
+        </p>
         <Button
-          className="mt-6"
-          onClick={() =>
-            setLocation("/")
-          }
+          className="w-full h-12 rounded-xl"
+          style={{ background: theme.colors.primary, color: theme.colors.background }}
+          onClick={() => setLocation("/")}
         >
           Voltar ao mapa
         </Button>
@@ -270,248 +103,114 @@ export default function CheckIn() {
     );
   }
 
-  /* ---------------------------------- */
-  /* PAGE */
-  /* ---------------------------------- */
+  /**
+   * @function handleSubmit
+   * @description Envia o check-in para o servidor via tRPC.
+   * Valida se um local foi selecionado antes de enviar.
+   */
+  async function handleSubmit() {
+    if (!activePlace) return;
+    setLoading(true);
+    try {
+      await checkinMutation.mutateAsync({
+        placeId: activePlace.id,
+        rating,
+        comment: comment || undefined,
+        occupancy: occupancy ?? undefined,
+      });
+      setDone(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div
-      className="min-h-screen flex flex-col"
-      style={{
-        background:
-          theme.colors.background,
-        color:
-          theme.colors.text,
-      }}
+      className="flex-1 min-h-screen flex flex-col"
+      style={{ background: theme.colors.background, color: theme.colors.text }}
     >
-      <Header
-        step={step}
-        onBack={() =>
-          step ===
-          "review"
-            ? setStep(
-                "select"
-              )
-            : setLocation(
-                "/"
-              )
-        }
-      />
+      {/* Cabeçalho com botão de voltar — usa PageHeader centralizado */}
+      <PageHeader title="Check-in" onBack={() => setLocation("/")} />
 
-      <main className="flex-1 overflow-y-auto p-4">
-        {step === "select" && (
-          <SelectStep
-            search={search}
-            setSearch={
-              setSearch
-            }
-            places={
-              filteredPlaces
-            }
-            onSelect={(
-              place: any
-            ) => {
-              setSelectedPlace(
-                place
-              );
-              setStep(
-                "review"
-              );
-            }}
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* Passo 1: Seleção do local */}
+        {!activePlace ? (
+          placesLoading ? (
+            <LoadingState />
+          ) : (
+            <PlaceSelectionStep places={places ?? []} onSelect={setSelectedPlace} />
+          )
+        ) : (
+          /* Passo 2: Preenchimento da avaliação */
+          <ReviewStep
+            selectedPlace={activePlace}
+            rating={rating}
+            setRating={setRating}
+            comment={comment}
+            setComment={setComment}
+            occupancy={occupancy}
+            setOccupancy={setOccupancy}
+            onChangePlace={() => setSelectedPlace(null)}
+            onSubmit={handleSubmit}
+            loading={loading}
           />
         )}
-
-        {step === "review" &&
-          selectedPlace && (
-            <ReviewStep
-              selectedPlace={
-                selectedPlace
-              }
-              rating={
-                rating
-              }
-              setRating={
-                setRating
-              }
-              comment={
-                comment
-              }
-              setComment={
-                setComment
-              }
-              occupancy={
-                occupancy
-              }
-              setOccupancy={
-                setOccupancy
-              }
-              onChangePlace={() =>
-                setStep(
-                  "select"
-                )
-              }
-              onSubmit={
-                handleSubmit
-              }
-              loading={
-                checkinMutation.isPending
-              }
-            />
-          )}
-      </main>
-    </div>
-  );
-}
-
-/* ================================================== */
-/* HEADER */
-/* ================================================== */
-
-function Header({
-  step,
-  onBack,
-}: any) {
-  return (
-    <header
-      className="px-4 py-3 border-b flex items-center gap-3"
-      style={{
-        borderColor:
-          theme.colors.border,
-        background:
-          theme.colors.surface,
-      }}
-    >
-      <button
-        onClick={onBack}
-        className="w-10 h-10 rounded-xl flex items-center justify-center"
-        style={{
-          background:
-            theme.colors.surfaceSoft,
-        }}
-      >
-        <ArrowLeft
-          size={18}
-        />
-      </button>
-
-      <div>
-        <h1 className="font-bold">
-          Fazer Check-in
-        </h1>
-
-        <p
-          className="text-xs"
-          style={{
-            color:
-              theme.colors.textMuted,
-          }}
-        >
-          {step ===
-          "select"
-            ? "Etapa 1 de 2"
-            : "Etapa 2 de 2"}
-        </p>
-      </div>
-    </header>
-  );
-}
-
-/* ================================================== */
-/* STEP 1 */
-/* ================================================== */
-
-function SelectStep({
-  search,
-  setSearch,
-  places,
-  onSelect,
-}: any) {
-  return (
-    <div className="space-y-5">
-      <div className="relative">
-        <Search
-          size={18}
-          className="absolute left-3 top-3"
-          style={{
-            color:
-              theme.colors.textMuted,
-          }}
-        />
-
-        <input
-          value={search}
-          onChange={(e) =>
-            setSearch(
-              e.target.value
-            )
-          }
-          placeholder="Buscar local..."
-          className="w-full h-12 pl-10 pr-4 rounded-xl border outline-none"
-          style={{
-            background:
-              theme.colors.surface,
-            borderColor:
-              theme.colors.border,
-          }}
-        />
-      </div>
-
-      <div>
-        <p className="text-sm font-semibold mb-3">
-          Locais próximos
-        </p>
-
-        <div className="space-y-2">
-          {places.map(
-            (place: any) => (
-              <button
-                key={
-                  place.id
-                }
-                onClick={() =>
-                  onSelect(
-                    place
-                  )
-                }
-                className="w-full text-left rounded-xl border p-3 transition"
-                style={{
-                  background:
-                    theme.colors.surface,
-                  borderColor:
-                    theme.colors.border,
-                }}
-              >
-                <p className="font-semibold">
-                  {
-                    place.name
-                  }
-                </p>
-
-                <div
-                  className="flex items-center gap-1 text-xs mt-1"
-                  style={{
-                    color:
-                      theme.colors.textMuted,
-                  }}
-                >
-                  <MapPin size={12} />
-                  {
-                    place.address
-                  }
-                </div>
-              </button>
-            )
-          )}
-        </div>
       </div>
     </div>
   );
 }
 
 /* ================================================== */
-/* STEP 2 */
+/* PASSO 1: SELEÇÃO DO LOCAL */
 /* ================================================== */
 
+/**
+ * @component PlaceSelectionStep
+ * @description Primeiro passo do check-in: lista de locais disponíveis para seleção.
+ * Permite ao usuário escolher em qual local deseja fazer check-in.
+ *
+ * @param places - Lista de locais disponíveis
+ * @param onSelect - Função chamada ao selecionar um local
+ */
+function PlaceSelectionStep({ places, onSelect }: { places: any[]; onSelect: (p: any) => void }) {
+  return (
+    <div>
+      <h2 className="text-lg font-bold mb-4">Selecione o local</h2>
+      <div className="space-y-2">
+        {places.map((place) => (
+          <button
+            key={place.id}
+            onClick={() => onSelect(place)}
+            className="w-full text-left rounded-xl border p-3 transition"
+            style={{
+              background: theme.colors.surface,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <p className="font-semibold">{place.name}</p>
+            <div
+              className="flex items-center gap-1 text-xs mt-1"
+              style={{ color: theme.colors.textMuted }}
+            >
+              <MapPin size={12} />
+              {place.address}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================== */
+/* PASSO 2: AVALIAÇÃO */
+/* ================================================== */
+
+/**
+ * @component ReviewStep
+ * @description Segundo passo do check-in: formulário de avaliação.
+ * Permite ao usuário dar uma nota, escrever um comentário e indicar a ocupação.
+ */
 function ReviewStep({
   selectedPlace,
   rating,
@@ -526,187 +225,86 @@ function ReviewStep({
 }: any) {
   return (
     <div className="space-y-6">
-      <Card>
-        <p className="font-semibold">
-          {
-            selectedPlace.name
-          }
+      {/* Card com informações do local selecionado */}
+      <PageCard>
+        <p className="font-semibold">{selectedPlace.name}</p>
+        <p className="text-sm mt-1" style={{ color: theme.colors.textMuted }}>
+          {selectedPlace.address}
         </p>
-
-        <p
-          className="text-sm mt-1"
-          style={{
-            color:
-              theme.colors.textMuted,
-          }}
-        >
-          {
-            selectedPlace.address
-          }
-        </p>
-
+        {/* Link para trocar o local selecionado */}
         <button
-          onClick={
-            onChangePlace
-          }
+          onClick={onChangePlace}
           className="text-sm mt-3"
-          style={{
-            color:
-              theme.colors.primary,
-          }}
+          style={{ color: theme.colors.primary }}
         >
           Trocar local
         </button>
-      </Card>
+      </PageCard>
 
+      {/* Campo de avaliação por estrelas — usa StarRating centralizado */}
       <div>
-        <Label className="mb-3 block">
-          Avaliação
-        </Label>
-
-        <div className="flex justify-center gap-2">
-          {[1, 2, 3, 4, 5].map(
-            (star) => (
-              <button
-                key={star}
-                onClick={() =>
-                  setRating(
-                    star
-                  )
-                }
-              >
-                <Star
-                  size={34}
-                  className={
-                    star <=
-                    rating
-                      ? "fill-yellow-500 text-yellow-500"
-                      : "text-zinc-700"
-                  }
-                />
-              </button>
-            )
-          )}
+        <Label className="mb-3 block">Avaliação</Label>
+        <div className="flex justify-center">
+          <StarRating rating={rating} onRate={setRating} size={34} />
         </div>
       </div>
 
+      {/* Campo de comentário */}
       <div>
-        <Label className="mb-2 block">
-          Comentário
-        </Label>
-
+        <Label className="mb-2 block">Comentário</Label>
         <Textarea
           rows={4}
           value={comment}
-          onChange={(e) =>
-            setComment(
-              e.target.value
-            )
-          }
+          onChange={(e) => setComment(e.target.value)}
           placeholder="Compartilhe sua experiência..."
         />
       </div>
 
+      {/* Campo de ocupação */}
       <div>
-        <Label className="mb-2 block">
-          Ocupação
-        </Label>
-
+        <Label className="mb-2 block">Ocupação</Label>
         <RadioGroup
-          value={
-            occupancy ??
-            ""
-          }
-          onValueChange={(
-            v
-          ) =>
-            setOccupancy(
-              v as any
-            )
-          }
+          value={occupancy ?? ""}
+          onValueChange={(v) => setOccupancy(v as any)}
         >
-          <Option
-            value="empty"
-            label="Vazio"
-          />
-          <Option
-            value="moderate"
-            label="Moderado"
-          />
-          <Option
-            value="full"
-            label="Cheio"
-          />
+          <OccupancyOption value="empty" label="Vazio" />
+          <OccupancyOption value="moderate" label="Moderado" />
+          <OccupancyOption value="full" label="Cheio" />
         </RadioGroup>
       </div>
 
+      {/* Botão de confirmação do check-in */}
       <Button
         className="w-full h-14 rounded-xl font-semibold transition-all duration-200"
         style={{
-          background: loading
-            ? theme.colors.border
-            : theme.colors.primary,
-        
-          color: loading
-            ? theme.colors.textMuted
-            : theme.colors.background,
+          background: loading ? theme.colors.border : theme.colors.primary,
+          color: loading ? theme.colors.textMuted : theme.colors.background,
         }}
         onClick={onSubmit}
         disabled={loading}
       >
-        {loading
-          ? "Enviando..."
-          : "Confirmar Check-in"}
+        {loading ? "Enviando..." : "Confirmar Check-in"}
       </Button>
     </div>
   );
 }
 
 /* ================================================== */
-/* HELPERS */
+/* COMPONENTES AUXILIARES */
 /* ================================================== */
 
-function Card({
-  children,
-}: any) {
-  return (
-    <div
-      className="rounded-xl border p-4"
-      style={{
-        background:
-          theme.colors.surface,
-        borderColor:
-          theme.colors.border,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Option({
-  value,
-  label,
-}: any) {
+/**
+ * @component OccupancyOption
+ * @description Opção de radio button para seleção de ocupação do local.
+ *
+ * @param value - Valor da opção (empty, moderate, full)
+ * @param label - Rótulo exibido ao usuário
+ */
+function OccupancyOption({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <RadioGroupItem
-        value={value}
-        id={value}
-      />
-      <Label htmlFor={value}>
-        {label}
-      </Label>
-    </div>
-  );
-}
-
-function PageCenter({
-  children,
-}: any) {
-  return (
-    <div className="flex-1 min-h-screen flex flex-col items-center justify-center px-4">
-      {children}
+      <RadioGroupItem value={value} id={value} />
+      <Label htmlFor={value}>{label}</Label>
     </div>
   );
 }

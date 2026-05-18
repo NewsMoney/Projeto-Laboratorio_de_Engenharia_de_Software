@@ -1,3 +1,11 @@
+/**
+ * @file CreatyParty.tsx
+ * @description Página de criação de festa ou local.
+ * Permite ao administrador cadastrar um novo local fixo (com horários de funcionamento)
+ * ou uma festa/evento (com data, horário, gênero musical e configurações de acesso).
+ * Integra o mapa Leaflet para seleção de localização via clique ou busca de endereço.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
@@ -32,6 +40,11 @@ import LeafletMap, { MapPlace } from "@/components/LeafletMap";
 import { theme } from "@/lib/theme";
 import { trpc } from "@/lib/trpc";
 
+/* ================================================== */
+/* TIPOS */
+/* ================================================== */
+
+/** Modo de criação: festa (eventável) ou local (fixo) */
 type CreateMode = "party" | "place";
 type OpeningHourField = "enabled" | "open" | "close";
 type WeekDayKey = (typeof WEEK_DAYS)[number]["key"];
@@ -45,8 +58,9 @@ type AddressFields = {
   zipCode: string;
 };
 
+/** Estado completo do formulário de criação */
 type FormState = {
-  // banco
+  /* Campos persistidos no banco de dados */
   name: string;
   address: string;
 
@@ -59,7 +73,7 @@ type FormState = {
 
   imageUrl: string;
 
-  // party
+  /* Campos específicos de festa */
   genre: string;
   date: string;
   startTime: string;
@@ -71,7 +85,7 @@ type FormState = {
 
   capacity: number | null;
 
-  // frontend
+  /* Campos auxiliares apenas para a UI (não persistidos diretamente) */
   addressFields: AddressFields;
   confirmedLocation: string;
 };

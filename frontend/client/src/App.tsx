@@ -1,3 +1,10 @@
+/**
+ * @file App.tsx
+ * @description Componente raiz da aplicação React.
+ * Configura o roteamento (wouter), provedores de contexto (tema, tooltips)
+ * e define a estrutura principal do layout.
+ */
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -6,6 +13,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AppLayout } from "./components/AppLayout";
 
+/* Importação das páginas */
 import Home from "./pages/Home";
 import Search from "./pages/Search";
 import MapPage from "./pages/MapPage";
@@ -20,6 +28,11 @@ import ReportsPage from "./pages/ReportsPage"
 import CreatePartyOrPlace from "./pages/CreatyParty";
 import Usuarios from "./pages/UsersInfo";
 
+/**
+ * @component Router
+ * @description Define as rotas da aplicação e renderiza a página correspondente
+ * dentro do layout principal (AppLayout).
+ */
 function Router() {
   return (
     <AppLayout>
@@ -45,6 +58,11 @@ function Router() {
   );
 }
 
+/**
+ * @component App
+ * @description Ponto de entrada principal. Envolve a aplicação com os provedores
+ * necessários (ErrorBoundary, ThemeProvider, TooltipProvider) e renderiza o Router.
+ */
 function App() {
   return (
     <ErrorBoundary>

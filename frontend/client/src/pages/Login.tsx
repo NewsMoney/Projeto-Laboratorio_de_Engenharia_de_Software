@@ -1,342 +1,176 @@
+/**
+ * @file Login.tsx
+ * @description Página de login do usuário.
+ * Permite ao usuário autenticar-se com email e senha.
+ * Redireciona para a página inicial após login bem-sucedido.
+ * Oferece link para a página de registro de novos usuários.
+ */
+
 import { useState } from "react";
 import { useLocation } from "wouter";
-
-import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { theme } from "@/lib/theme";
-
+import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 /* ================================================== */
-/* LOGIN PAGE */
+/* PÁGINA PRINCIPAL */
 /* ================================================== */
 
-export default function LoginPage() {
-  const [, setLocation] =
-    useLocation();
+/**
+ * @component Login
+ * @description Formulário de login com campos de email e senha.
+ * Exibe/oculta a senha com botão de alternância.
+ * Redireciona para "/" após autenticação bem-sucedida.
+ */
+export default function Login() {
+  const [, setLocation] = useLocation();
 
-  const [email, setEmail] =
-    useState("");
+  /* Estado dos campos do formulário */
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [
-    password,
-    setPassword,
-  ] = useState("");
+  /* Mutation de login via tRPC */
+  const loginMutation = trpc.auth.login.useMutation();
+  const utils = trpc.useUtils();
 
-  const loginMutation =
-    trpc.auth.login.useMutation({
-      onSuccess: () => {
-        toast.success(
-          "Login realizado com sucesso"
-        );
-
-        setLocation("/");
-      },
-
-      onError: (err) => {
-        toast.error(
-          err.message ||
-            "Falha no login"
-        );
-      },
-    });
-
-  /* ---------------------------------- */
-  /* LOGIN */
-  /* ---------------------------------- */
-
-  async function handleLogin(
-    e: React.SubmitEvent
-  ) {
+  /**
+   * @function handleSubmit
+   * @description Processa o envio do formulário de login.
+   * Em caso de sucesso, invalida o cache de autenticação e redireciona.
+   * Em caso de erro, exibe uma notificação toast.
+   */
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (
-      !email.trim() ||
-      !password.trim()
-    ) {
-      toast.error(
-        "Preencha email e senha"
-      );
-
-      return;
-    }
-
-    const submitLogin = (
-      locationData: {
-        lat: number;
-        lng: number;
-      } | null
-    ) => {
-      const loginValue = email.trim();
-
-      loginMutation.mutate({
-        email: loginValue.includes("@")
-          ? loginValue
-          : undefined,
-      
-        username: !loginValue.includes("@")
-          ? loginValue
-          : undefined,
-      
-        password,
-      
-        location: locationData,
-      });
-    };
-
-    if (
-      "geolocation" in
-      navigator
-    ) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          submitLogin({
-            lat: pos.coords
-              .latitude,
-            lng: pos.coords
-              .longitude,
-          });
-        },
-        () =>
-          submitLogin(null)
-      );
-    } else {
-      submitLogin(null);
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      await utils.auth.me.invalidate();
+      setLocation("/");
+    } catch {
+      toast.error("Email ou senha incorretos. Tente novamente.");
     }
   }
 
-  /* ---------------------------------- */
-  /* PAGE */
-  /* ---------------------------------- */
+  const loading = loginMutation.isPending;
 
   return (
     <div
-      className="min-h-screen flex flex-col"
-      style={{
-        background:
-          theme.colors.background,
-        color:
-          theme.colors.text,
-      }}
+      className="flex-1 min-h-screen flex flex-col items-center justify-center px-4"
+      style={{ background: theme.colors.background, color: theme.colors.text }}
     >
-      <Header
-        onBack={() =>
-          setLocation("/")
-        }
-      />
-
-      <main className="flex-1 flex items-center justify-center px-4">
-        <div
-          className="w-full max-w-md rounded-2xl border p-6"
-          style={{
-            background:
-              theme.colors.surface,
-            borderColor:
-              theme.colors.border,
-            boxShadow:
-              theme.shadow.card,
-          }}
-        >
-          <h2 className="text-2xl font-bold text-center mb-6">
-            Entrar
-          </h2>
-
-          <form
-            onSubmit={
-              handleLogin
-            }
-            className="space-y-4"
+      <div className="w-full max-w-sm">
+        {/* Logo e título da aplicação */}
+        <div className="text-center mb-8">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{
+              background: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+            }}
           >
-            <Field label="Usuário / Email">
-              <Input
-                type="text"
-                value={email}
-                placeholder="Digite seu email"
-                autoComplete="username"
-                onChange={(
-                  e: React.ChangeEvent<HTMLInputElement>
-                ) =>
-                  setEmail(
-                    e.target.value
-                  )
-                }
-              />
-            </Field>
-              
-            <Field label="Senha">
-              <Input
-                type="password"
-                value={password}
-                placeholder="Digite sua senha"
-                autoComplete="current-password"
-                onChange={(
-                  e: React.ChangeEvent<HTMLInputElement>
-                ) =>
-                  setPassword(
-                    e.target.value
-                  )
-                }
-              />
-            </Field>
+            <MapPin size={28} style={{ color: theme.colors.primary }} />
+          </div>
+          <h1 className="text-2xl font-bold">Entrar</h1>
+          <p className="text-sm mt-1" style={{ color: theme.colors.textMuted }}>
+            Acesse sua conta para continuar
+          </p>
+        </div>
 
-            <Button
-              type="submit"
-              disabled={
-                loginMutation.isPending
-              }
-              className="w-full h-12 rounded-xl font-semibold mt-2"
+        {/* Formulário de login */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Campo de email */}
+          <div>
+            <label className="text-sm font-semibold block mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+              className={inputClass()}
               style={{
-                background:
-                  loginMutation.isPending
-                    ? theme
-                        .colors
-                        .border
-                    : theme
-                        .colors
-                        .primary,
-
-                color:
-                  loginMutation.isPending
-                    ? theme
-                        .colors
-                        .textMuted
-                    : theme
-                        .colors
-                        .background,
-
-                boxShadow:
-                  loginMutation.isPending
-                    ? "none"
-                    : theme
-                        .shadow
-                        .neon,
+                background: theme.colors.surface,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
               }}
-            >
-              {loginMutation.isPending
-                ? "Entrando..."
-                : "Entrar"}
-            </Button>
+            />
+          </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10"
-                onClick={() =>
-                  setLocation(
-                    "/"
-                  )
-                }
-              >
-                Voltar
-              </Button>
-
+          {/* Campo de senha com botão de visibilidade */}
+          <div>
+            <label className="text-sm font-semibold block mb-2">Senha</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className={inputClass("pr-12")}
+                style={{
+                  background: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.text,
+                }}
+              />
+              {/* Botão para alternar visibilidade da senha */}
               <button
                 type="button"
-                onClick={() =>
-                  setLocation(
-                    "/register"
-                  )
-                }
-                className="text-sm font-medium"
-                style={{
-                  color:
-                    theme.colors.primary,
-                }}
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
-                Registrar
+                {showPassword ? (
+                  <EyeOff size={18} style={{ color: theme.colors.textMuted }} />
+                ) : (
+                  <Eye size={18} style={{ color: theme.colors.textMuted }} />
+                )}
               </button>
             </div>
-          </form>
-        </div>
-      </main>
-    </div>
-  );
-}
+          </div>
 
-/* ================================================== */
-/* HEADER */
-/* ================================================== */
+          {/* Botão de submissão */}
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 rounded-2xl font-semibold"
+            style={{
+              background: loading ? theme.colors.border : theme.colors.primary,
+              color: loading ? theme.colors.textMuted : theme.colors.background,
+              boxShadow: loading ? "none" : theme.shadow.neon,
+            }}
+          >
+            {loading ? "Entrando..." : "Entrar"}
+          </Button>
+        </form>
 
-function Header({
-  onBack,
-}: {
-  onBack: () => void;
-}) {
-  return (
-    <header
-      className="px-4 py-3 border-b flex items-center justify-between"
-      style={{
-        background:
-          theme.colors.surface,
-        borderColor:
-          theme.colors.border,
-      }}
-    >
-      <h1 className="text-lg font-bold">
-        Join
-        <span
-          style={{
-            color:
-              theme.colors.primary,
-          }}
+        {/* Link para registro de nova conta */}
+        <button
+          type="button"
+          onClick={() => setLocation("/register")}
+          className="w-full text-sm mt-4"
+          style={{ color: theme.colors.primary }}
         >
-          Me
-        </span>
-      </h1>
-
-      <button
-        onClick={onBack}
-        className="text-sm transition"
-        style={{
-          color:
-            theme.colors.textMuted,
-        }}
-      >
-        Voltar
-      </button>
-    </header>
-  );
-}
-
-/* ================================================== */
-/* FIELD */
-/* ================================================== */
-
-function Field({
-  label,
-  children,
-}: any) {
-  return (
-    <div>
-      <label className="text-sm font-medium block mb-2">
-        {label}
-      </label>
-
-      {children}
+          Não possui conta? Registrar-se
+        </button>
+      </div>
     </div>
   );
 }
 
 /* ================================================== */
-/* INPUT */
+/* UTILITÁRIOS DE ESTILO */
 /* ================================================== */
 
-function Input({
-  ...props
-}: any) {
-  return (
-    <input
-      {...props}
-      className="w-full h-12 px-4 rounded-xl border outline-none"
-      style={{
-        background:
-          theme.colors.surfaceSoft,
-        borderColor:
-          theme.colors.border,
-        color:
-          theme.colors.text,
-      }}
-    />
-  );
+/**
+ * @function inputClass
+ * @description Retorna a classe CSS padrão para campos de input.
+ * Centraliza o estilo dos inputs para manter consistência visual.
+ *
+ * @param extra - Classes CSS adicionais (ex: "pr-12" para padding direito)
+ */
+function inputClass(extra = "") {
+  return `w-full h-14 px-4 rounded-2xl border outline-none transition-colors ${extra}`;
 }
