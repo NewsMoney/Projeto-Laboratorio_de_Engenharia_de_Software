@@ -3,6 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./cookies";
 import { systemRouter } from "./systemRouter";
 import { analyticsRouter } from "./analytic";
+import { usersRouter } from "./users";
 import { publicProcedure, protectedProcedure, router } from "./trpc";
 import {
   createPlace,
@@ -23,11 +24,12 @@ import {
   updateUserProfile,
 } from "./db";
 
-
 export const appRouter = router({
   system: systemRouter,
 
   analytics: analyticsRouter,
+
+  users: usersRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

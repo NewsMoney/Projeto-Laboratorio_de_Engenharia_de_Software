@@ -248,7 +248,7 @@ export default function Reports() {
           { label: "Top usuário", value: mostActiveUser?.name ?? "Sem dados" },
         ],
         actionLabel: "Ver usuários",
-        onAction: () => setLocation("/usuarios"),
+        onAction: () => setLocation("/users-info"),
       },
       {
         id: "checkins",

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -10,87 +11,162 @@ import {
   ChevronRight,
   Activity,
   TrendingUp,
+  Star,
 } from "lucide-react";
 
+import { trpc } from "@/lib/trpc";
 import { theme } from "@/lib/theme";
 
-const recentEvents = [
-  {
-    id: 1,
-    name: "Neon Pulse",
-    type: "Festa",
-    date: "Hoje, 23:00",
-    location: "Warehouse 21",
-    status: "Publicada",
-  },
-  {
-    id: 2,
-    name: "Deep House Sessions",
-    type: "Festa",
-    date: "Sábado, 22:00",
-    location: "Club Aurora",
-    status: "Rascunho",
-  },
-  {
-    id: 3,
-    name: "Galpão Norte",
-    type: "Local",
-    date: "Funcionamento semanal",
-    location: "Centro",
-    status: "Ativo",
-  },
-];
+type SummaryStats = {
+  totalUsers: number;
+  totalCheckins: number;
+  totalPlaces: number;
+  activeUsers: number;
+  avgRating: number;
+};
 
-const recentUsers = [
-  {
-    id: 1,
-    name: "Marina Costa",
-    email: "marina@email.com",
-    role: "Usuário",
-    joinedAt: "Hoje",
-  },
-  {
-    id: 2,
-    name: "Rafael Lima",
-    email: "rafael@email.com",
-    role: "Organizador",
-    joinedAt: "Ontem",
-  },
-  {
-    id: 3,
-    name: "Bianca Torres",
-    email: "bianca@email.com",
-    role: "Usuário",
-    joinedAt: "2 dias atrás",
-  },
-];
+type AdminUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date | null;
+  actionsCount?: number | null;
+};
 
-const dashboardCards = [
-  {
-    title: "Relatório de eventos",
-    description: "Visualize festas criadas, locais ativos e publicações recentes.",
-    value: "24",
-    label: "eventos no mês",
-    icon: <PartyPopper size={24} />,
-  },
-  {
-    title: "Relatório de usuários",
-    description: "Acompanhe crescimento, novos cadastros e perfis ativos.",
-    value: "1.248",
-    label: "usuários totais",
-    icon: <UsersRound size={24} />,
-  },
-  {
-    title: "Performance geral",
-    description: "Veja acessos, engajamento e movimentação da plataforma.",
-    value: "+18%",
-    label: "crescimento",
-    icon: <TrendingUp size={24} />,
-  },
-];
+type AdminPlace = {
+  id: number;
+  name: string;
+  checkins: number;
+  avgRating: number;
+  percentage: number;
+};
+
+const EMPTY_DATE_RANGE = { startDate: "", endDate: "" };
+
+
 
 export default function Admin() {
   const [, setLocation] = useLocation();
+
+  const WEEK_DATE_RANGE = useMemo(() => {
+    const end = new Date();
+  
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+  
+    return {
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+    };
+  }, []);
+
+  const {
+    data: summaryStats,
+    isLoading: isSummaryLoading,
+  } = trpc.analytics.summaryStats.useQuery(EMPTY_DATE_RANGE);
+
+  const {
+    data: usersData = [],
+    isLoading: isUsersLoading,
+  } = trpc.users.getAll.useQuery();
+
+  const {
+    data: topPlacesData = [],
+    isLoading: isPlacesLoading,
+  } = trpc.analytics.topPlaces.useQuery({
+  ...WEEK_DATE_RANGE,
+  limit: 3,
+});
+
+  const stats: SummaryStats = {
+    totalUsers: summaryStats?.totalUsers ?? 0,
+    totalCheckins: summaryStats?.totalCheckins ?? 0,
+    totalPlaces: summaryStats?.totalPlaces ?? 0,
+    activeUsers: summaryStats?.activeUsers ?? 0,
+    avgRating: Number(summaryStats?.avgRating ?? 0),
+  };
+
+  const recentUsers = useMemo(() => {
+    return [...usersData]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 3)
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        actionsCount: user.actionsCount ?? 0,
+      })) as AdminUser[];
+  }, [usersData]);
+
+  const topPlaces = useMemo(() => {
+    return [...topPlacesData]
+      .slice(0, 3)
+      .map((place) => ({
+        id: place.id,
+        name: place.name,
+        checkins: place.checkins ?? 0,
+        avgRating: Number(place.avgRating ?? 0),
+        percentage: place.percentage ?? 0,
+      })) as AdminPlace[];
+  }, [topPlacesData]);
+
+  const activityRate =
+    stats.totalUsers > 0 ? (stats.activeUsers / stats.totalUsers) * 100 : 0;
+
+  const newUsersLast7Days = useMemo(() => {
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 7);
+
+    return usersData.filter((user) => {
+      const createdAt = new Date(user.createdAt);
+      return createdAt >= limitDate;
+    }).length;
+  }, [usersData]);
+
+  const performanceScore = useMemo(() => {
+    const checkinsScore = Math.min(stats.totalCheckins / 10, 40);
+    const activityScore = Math.min(activityRate * 0.4, 35);
+    const ratingScore = Math.min(stats.avgRating * 6, 25);
+
+    return Math.min(Math.round(checkinsScore + activityScore + ratingScore), 100);
+  }, [activityRate, stats.avgRating, stats.totalCheckins]);
+
+  const dashboardCards = useMemo(
+    () => [
+      {
+        title: "Relatório de eventos",
+        description: "Locais cadastrados e mais movimentados no sistema.",
+        value: String(stats.totalPlaces),
+        label: "locais cadastrados",
+        icon: <PartyPopper size={24} />,
+      },
+      {
+        title: "Relatório de usuários",
+        description: "Cadastros totais e usuários recentes na plataforma.",
+        value: String(stats.totalUsers),
+        label: "usuários totais",
+        icon: <UsersRound size={24} />,
+      },
+      {
+        title: "Performance geral",
+        description: "Combinação de atividade, check-ins e avaliações.",
+        value: `${performanceScore}%`,
+        label: "índice da plataforma",
+        icon: <TrendingUp size={24} />,
+      },
+    ],
+    [performanceScore, stats.totalPlaces, stats.totalUsers]
+  );
+
+  const isLoading = isSummaryLoading || isUsersLoading || isPlacesLoading;
 
   function goBack() {
     setLocation("/");
@@ -106,6 +182,17 @@ export default function Admin() {
 
   function goToReports() {
     setLocation("/Reports");
+  }
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center text-white"
+        style={{ background: theme.colors.background }}
+      >
+        Carregando painel administrativo...
+      </div>
+    );
   }
 
   return (
@@ -152,23 +239,23 @@ export default function Admin() {
         <section className="mb-5 grid gap-4 md:grid-cols-3">
           <MetricCard
             icon={<PartyPopper size={24} />}
-            title="Eventos ativos"
-            value="18"
-            description="Festas e locais publicados"
+            title="Locais cadastrados"
+            value={String(stats.totalPlaces)}
+            description="Festas e locais disponíveis"
           />
 
           <MetricCard
             icon={<UsersRound size={24} />}
             title="Novos usuários"
-            value="126"
-            description="Cadastros recentes"
+            value={String(newUsersLast7Days)}
+            description="Cadastros nos últimos 7 dias"
           />
 
           <MetricCard
             icon={<Activity size={24} />}
             title="Atividade"
-            value="+32%"
-            description="Movimento da semana"
+            value={`${activityRate.toFixed(0)}%`}
+            description="Participação de usuários ativos"
           />
         </section>
 
@@ -240,14 +327,14 @@ export default function Admin() {
 
         <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
           <Panel
-            title="Últimas festas e locais"
-            description="Eventos e locais adicionados recentemente."
+            title="Locais em destaque"
+            description="Top 3 locais mais movimentados da semana."
             actionLabel="Criar novo"
             onAction={goToCreateEvent}
           >
             <div className="space-y-3">
-              {recentEvents.map((event) => (
-                <EventRow key={event.id} event={event} />
+              {topPlaces.map((place) => (
+                <PlaceRow key={place.id} place={place} />
               ))}
             </div>
           </Panel>
@@ -388,40 +475,43 @@ function QuickAction({
   );
 }
 
-function EventRow({
-  event,
+function PlaceRow({
+  place,
 }: {
-  event: {
-    name: string;
-    type: string;
-    date: string;
-    location: string;
-    status: string;
-  };
+  place: AdminPlace;
 }) {
   return (
     <div className="grid gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:border-emerald-400/40 md:grid-cols-[1fr_auto]">
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/40 bg-emerald-400/10 text-emerald-400">
-          {event.type === "Festa" ? <PartyPopper size={22} /> : <MapPin size={22} />}
+          <MapPin size={22} />
         </div>
 
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-white">{event.name}</h3>
+            <h3 className="font-bold text-white">
+              {place.name}
+            </h3>
+
             <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-400">
-              {event.type}
+              Local
             </span>
           </div>
 
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/45">
             <span className="flex items-center gap-1.5">
-              <Clock size={15} />
-              {event.date}
+              <Activity size={15} />
+              {Number(place.checkins ?? 0)} check-ins
             </span>
+
             <span className="flex items-center gap-1.5">
-              <MapPin size={15} />
-              {event.location}
+              <Star size={15} />
+              {Number(place.avgRating ?? 0).toFixed(1)}
+            </span>
+
+            <span className="flex items-center gap-1.5">
+              <Clock size={15} />
+              {Number(place.percentage ?? 0).toFixed(0)}%
             </span>
           </div>
         </div>
@@ -429,7 +519,7 @@ function EventRow({
 
       <div className="flex items-center md:justify-end">
         <span className="rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-sm font-bold text-white/60">
-          {event.status}
+          Em destaque
         </span>
       </div>
     </div>
@@ -439,21 +529,25 @@ function EventRow({
 function UserRow({
   user,
 }: {
-  user: {
-    name: string;
-    email: string;
-    role: string;
-    joinedAt: string;
-  };
+  user: AdminUser;
 }) {
+  const initials = user.name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const roleLabel = user.role === "admin"
+    ? "ADM"
+    : user.role === "moderator"
+      ? "Moderador"
+      : "Usuário";
+
   return (
     <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:border-emerald-400/40">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-sm font-black text-emerald-400">
-        {user.name
-          .split(" ")
-          .map((part) => part[0])
-          .slice(0, 2)
-          .join("")}
+        {initials}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -462,8 +556,10 @@ function UserRow({
       </div>
 
       <div className="hidden text-right sm:block">
-        <p className="text-sm font-bold text-emerald-400">{user.role}</p>
-        <p className="mt-1 text-xs text-white/35">{user.joinedAt}</p>
+        <p className="text-sm font-bold text-emerald-400">{roleLabel}</p>
+        <p className="mt-1 text-xs text-white/35">
+          {new Date(user.createdAt).toLocaleDateString("pt-BR")}
+        </p>
       </div>
     </div>
   );

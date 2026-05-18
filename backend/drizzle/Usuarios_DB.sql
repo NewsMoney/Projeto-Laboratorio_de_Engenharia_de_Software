@@ -12,7 +12,7 @@ CREATE TABLE users (
   bio TEXT,
   avatarUrl TEXT,
 
-  role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  role ENUM('user','moderator', 'admin') NOT NULL DEFAULT 'user',
 
   createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
