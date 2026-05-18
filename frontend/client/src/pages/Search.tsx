@@ -43,10 +43,15 @@ export default function Search() {
     }
   };
 
-  /* Busca os locais pelo nome via tRPC */
+  /*
+   * Busca os locais pelo nome via tRPC.
+   * A query só é disparada quando há ao menos 1 caractere digitado,
+   * pois o backend exige query.min(1) e retorna erro 400 com string vazia.
+   */
+  const hasQuery = debouncedQuery.length > 0;
   const { data: places, isLoading } = trpc.places.search.useQuery(
     { query: debouncedQuery },
-    { enabled: true }
+    { enabled: hasQuery }
   );
 
   return (
@@ -91,11 +96,19 @@ export default function Search() {
         {/* Estado de carregamento — usa LoadingState centralizado */}
         {isLoading && <LoadingState />}
 
-        {/* Estado vazio — usa EmptyState centralizado */}
-        {!isLoading && places && places.length === 0 && (
+        {/* Estado inicial: nenhuma busca realizada ainda */}
+        {!hasQuery && (
           <EmptyState
-            message={debouncedQuery.length > 0 ? "Nenhum local encontrado" : "Nenhum local cadastrado ainda"}
-            subMessage={debouncedQuery.length > 0 ? "Tente buscar com outros termos" : undefined}
+            message="Digite para buscar"
+            subMessage="Pesquise por nome do local, festa ou evento"
+          />
+        )}
+
+        {/* Estado vazio: busca realizada mas sem resultados */}
+        {hasQuery && !isLoading && places && places.length === 0 && (
+          <EmptyState
+            message="Nenhum local encontrado"
+            subMessage="Tente buscar com outros termos"
           />
         )}
 

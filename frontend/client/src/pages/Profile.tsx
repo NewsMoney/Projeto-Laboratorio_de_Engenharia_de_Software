@@ -3,7 +3,11 @@
  * @description Página de perfil do usuário autenticado.
  * Exibe avatar, estatísticas (check-ins, locais, amigos), bio e histórico de check-ins.
  * Permite editar o perfil (bio e avatar) através de um modal.
- * Oferece acesso às configurações, compartilhamento e logout.
+ * Oferece acesso às configurações, compartilhamento e logout via menu lateral.
+ *
+ * Endpoints utilizados:
+ * - trpc.user.profile       → retorna { user, stats, recentCheckins }
+ * - trpc.user.updateProfile → atualiza bio e avatarUrl
  */
 
 import {
@@ -20,10 +24,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { theme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
-import { LoadingState } from "@/components/LoadingState";
 import {
   ArrowLeft,
   Grid3X3,
+  Loader2,
   LogOut,
   Menu,
   Settings,
@@ -87,11 +91,16 @@ type CheckinsSectionProps = {
 /**
  * @component Profile
  * @description Página de perfil do usuário. Gerencia o estado de edição,
- * busca dados do usuário e seus check-ins, e coordena os sub-componentes.
+ * busca dados do usuário via trpc.user.profile e coordena os sub-componentes.
+ *
+ * O endpoint trpc.user.profile retorna:
+ * - user: dados completos do usuário (bio, avatarUrl, name, username, role)
+ * - stats: { totalCheckins, uniquePlaces, avgRating }
+ * - recentCheckins: últimos 5 check-ins com placeId, placeName e rating
  */
 export default function Profile() {
   const [, setLocation] = useLocation();
-  const { user, isAuthenticated, loading, logout } = useAuth();
+  const { user: authUser, isAuthenticated, loading: authLoading, logout } = useAuth();
   const utils = trpc.useUtils();
 
   /* Estado da UI */
@@ -99,59 +108,98 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  /* Estado do formulário de edição */
+  /* Estado do formulário de edição — sincronizado com os dados do perfil */
   const [bio, setBio] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  /* Sincroniza o estado do formulário com os dados do usuário */
-  useEffect(() => {
-    if (user) {
-      setBio((user as any).bio ?? "");
-      setAvatarPreview((user as any).avatar ?? null);
-    }
-  }, [user]);
-
-  /* Busca os check-ins do usuário autenticado */
-  const { data: checkins, isLoading: checkinsLoading } = trpc.checkins.myCheckins.useQuery(
+  /*
+   * Busca o perfil completo do usuário autenticado.
+   * Retorna: { user, stats: { totalCheckins, uniquePlaces }, recentCheckins }
+   * Só executa quando o usuário está autenticado.
+   */
+  const { data: profileData, isLoading: profileLoading } = trpc.user.profile.useQuery(
     undefined,
     { enabled: isAuthenticated }
   );
 
-  /* Mutation para atualizar o perfil */
-  const updateProfile = trpc.users.updateProfile.useMutation();
+  /*
+   * Sincroniza o formulário de edição com os dados do perfil carregado.
+   * Atualiza bio e avatarPreview sempre que os dados do perfil mudarem.
+   */
+  useEffect(() => {
+    if (!profileData?.user) return;
+    setBio(profileData.user.bio ?? "");
+    setAvatarPreview(profileData.user.avatarUrl ?? null);
+  }, [profileData]);
+
+  /* Mutation para atualizar bio e avatarUrl do perfil */
+  const updateProfileMutation = trpc.user.updateProfile.useMutation({
+    onSuccess: async () => {
+      toast.success("Perfil atualizado com sucesso!");
+      /* Invalida o cache do perfil para refletir as mudanças imediatamente */
+      await utils.user.profile.invalidate();
+      setEditOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Erro ao salvar perfil. Tente novamente.");
+    },
+  });
 
   /**
    * @function handleSaveProfile
-   * @description Salva as alterações do perfil (bio e avatar).
-   * Invalida o cache do usuário após salvar para refletir as mudanças.
+   * @description Dispara a mutation de atualização do perfil com bio e avatarUrl.
+   * O estado `saving` é controlado pelo isPending da mutation.
    */
-  async function handleSaveProfile() {
-    setSaving(true);
-    try {
-      await updateProfile.mutateAsync({ bio, avatar: avatarPreview ?? undefined });
-      await utils.auth.me.invalidate();
-      setEditOpen(false);
-      toast.success("Perfil atualizado com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar perfil. Tente novamente.");
-    } finally {
-      setSaving(false);
-    }
+  function handleSaveProfile() {
+    updateProfileMutation.mutate({ bio, avatarUrl: avatarPreview });
   }
 
-  /* Redireciona para login se não autenticado */
-  if (!isAuthenticated && !loading) {
+  /**
+   * @function handleLogout
+   * @description Executa o logout e redireciona para a página inicial.
+   */
+  async function handleLogout() {
+    setMenuOpen(false);
+    await logout();
+    setLocation("/");
+  }
+
+  /* Estado de carregamento inicial da autenticação */
+  if (authLoading) {
     return (
       <div
-        className="flex-1 min-h-screen flex flex-col items-center justify-center px-4"
+        className="flex-1 flex items-center justify-center"
+        style={{ background: theme.colors.background }}
+      >
+        <Loader2 className="animate-spin" style={{ color: theme.colors.primary }} />
+      </div>
+    );
+  }
+
+  /* Estado não autenticado: exibe convite para login */
+  if (!isAuthenticated) {
+    return (
+      <div
+        className="flex-1 flex flex-col items-center justify-center px-4"
         style={{ background: theme.colors.background, color: theme.colors.text }}
       >
-        <p className="text-sm mb-4" style={{ color: theme.colors.textMuted }}>
-          Você precisa estar logado para ver seu perfil.
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+          style={{
+            background: theme.colors.surface,
+            border: `1px solid ${theme.colors.border}`,
+          }}
+        >
+          <User size={40} />
+        </div>
+        <h2 className="font-bold text-center">Faça login para ver seu perfil</h2>
+        <p className="text-sm mt-2 text-center" style={{ color: theme.colors.textMuted }}>
+          Entre para acessar seu perfil, check-ins e configurações.
         </p>
         <Button
-          onClick={() => setLocation("/login")}
+          className="mt-5"
           style={{ background: theme.colors.primary, color: theme.colors.background }}
+          onClick={() => setLocation("/login")}
         >
           Entrar
         </Button>
@@ -159,32 +207,21 @@ export default function Profile() {
     );
   }
 
-  /* Estado de carregamento inicial */
-  if (loading) {
-    return (
-      <div
-        className="flex-1 min-h-screen flex flex-col"
-        style={{ background: theme.colors.background }}
-      >
-        <LoadingState className="flex-1" />
-      </div>
-    );
-  }
-
-  /* Estatísticas do perfil */
-  const totalCheckins = checkins?.length ?? 0;
-  const totalPlaces = new Set(checkins?.map((c: any) => c.placeId)).size;
-  const totalFriends = (user as any)?.friendsCount ?? 0;
+  /* Extrai estatísticas e check-ins do perfil carregado */
+  const stats = profileData?.stats;
+  const recentCheckins = (profileData?.recentCheckins ?? []) as CheckinItem[];
+  const totalCheckins = Number(stats?.totalCheckins ?? 0);
+  const totalPlaces = Number(stats?.uniquePlaces ?? 0);
 
   return (
     <div
-      className="flex-1 min-h-screen flex flex-col max-w-lg mx-auto"
+      className="flex-1 flex flex-col relative overflow-hidden"
       style={{ background: theme.colors.background, color: theme.colors.text }}
     >
-      {/* Barra de navegação superior */}
-      <nav
-        className="flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: theme.colors.border }}
+      {/* Cabeçalho: botão voltar, username e menu */}
+      <header
+        className="px-4 py-3 border-b flex items-center justify-between"
+        style={{ borderColor: theme.colors.border, background: theme.colors.surface }}
       >
         {/* Botão de voltar */}
         <button
@@ -196,10 +233,12 @@ export default function Profile() {
           <ArrowLeft size={18} />
         </button>
 
-        {/* Nome do usuário no centro */}
-        <span className="font-semibold">{user?.name ?? "Perfil"}</span>
+        {/* Username exibido no centro do cabeçalho */}
+        <span className="font-semibold">
+          {authUser?.username || authUser?.name || "perfil"}
+        </span>
 
-        {/* Botão de menu de opções */}
+        {/* Botão de menu lateral */}
         <button
           onClick={() => setMenuOpen(true)}
           className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -208,25 +247,28 @@ export default function Profile() {
         >
           <Menu size={18} />
         </button>
-      </nav>
+      </header>
 
-      {/* Seção superior: avatar, estatísticas e bio */}
-      <ProfileTop
-        name={user?.name ?? ""}
-        bio={bio}
-        avatarPreview={avatarPreview}
-        totalCheckins={totalCheckins}
-        totalPlaces={totalPlaces}
-        totalFriends={totalFriends}
-        onEdit={() => setEditOpen(true)}
-      />
+      {/* Conteúdo com scroll */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Seção superior: avatar, estatísticas e bio */}
+        <ProfileTop
+          name={authUser?.name || "Usuário"}
+          bio={bio}
+          avatarPreview={avatarPreview}
+          totalCheckins={totalCheckins}
+          totalPlaces={totalPlaces}
+          totalFriends={0}
+          onEdit={() => setEditOpen(true)}
+        />
 
-      {/* Grade de check-ins do usuário */}
-      <CheckinsSection
-        loading={checkinsLoading}
-        checkins={(checkins as CheckinItem[]) ?? []}
-        onOpen={(placeId) => setLocation(`/details/${placeId}`)}
-      />
+        {/* Grade de check-ins recentes */}
+        <CheckinsSection
+          loading={profileLoading}
+          checkins={recentCheckins}
+          onOpen={(placeId) => setLocation(`/details/${placeId}`)}
+        />
+      </div>
 
       {/* Modal de edição de perfil */}
       <EditProfileModal
@@ -237,34 +279,18 @@ export default function Profile() {
         avatarPreview={avatarPreview}
         setAvatarPreview={setAvatarPreview}
         onSave={handleSaveProfile}
-        saving={saving}
+        saving={updateProfileMutation.isPending}
       />
 
       {/* Menu lateral de opções */}
       {menuOpen && (
-        <MenuOverlay onClose={() => setMenuOpen(false)}>
-          <MenuButton icon={<Share2 size={18} />} onClick={() => setMenuOpen(false)}>
-            Compartilhar perfil
-          </MenuButton>
-          <MenuButton icon={<Settings size={18} />} onClick={() => setMenuOpen(false)}>
-            Configurações
-          </MenuButton>
-          {(user as any)?.role === "admin" && (
-            <MenuButton
-              icon={<Shield size={18} />}
-              onClick={() => { setMenuOpen(false); setLocation("/admin"); }}
-            >
-              Painel Admin
-            </MenuButton>
-          )}
-          <MenuButton
-            icon={<LogOut size={18} />}
-            danger
-            onClick={async () => { setMenuOpen(false); await logout(); }}
-          >
-            Sair
-          </MenuButton>
-        </MenuOverlay>
+        <SideMenu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          onLogout={handleLogout}
+          isAdmin={(authUser as any)?.role === "admin"}
+          onAdmin={() => { setMenuOpen(false); setLocation("/admin"); }}
+        />
       )}
     </div>
   );
@@ -291,7 +317,7 @@ function ProfileTop({
   return (
     <div className="px-4 pt-5">
       <div className="flex gap-5">
-        {/* Avatar do usuário com fallback */}
+        {/* Avatar do usuário com fallback para ícone */}
         <div
           className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center"
           style={{ background: theme.colors.surfaceSoft }}
@@ -303,11 +329,11 @@ function ProfileTop({
           )}
         </div>
 
-        {/* Estatísticas: check-ins, locais e amigos */}
+        {/* Estatísticas: check-ins, locais únicos e amigos */}
         <div className="flex-1 flex items-center justify-around">
-          <ProfileStat value={totalCheckins} label="checkins" />
-          <ProfileStat value={totalPlaces} label="locais" />
-          <ProfileStat value={totalFriends} label="amigos" />
+          <Stat value={totalCheckins} label="checkins" />
+          <Stat value={totalPlaces} label="locais" />
+          <Stat value={totalFriends} label="amigos" />
         </div>
       </div>
 
@@ -329,13 +355,13 @@ function ProfileTop({
 }
 
 /**
- * @component ProfileStat
+ * @component Stat
  * @description Exibe uma estatística numérica com rótulo no perfil.
  *
  * @param value - Valor numérico da estatística
- * @param label - Rótulo descritivo
+ * @param label - Rótulo descritivo abaixo do número
  */
-function ProfileStat({ value, label }: { value: number; label: string }) {
+function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="text-center">
       <p className="font-bold text-lg">{value}</p>
@@ -348,9 +374,8 @@ function ProfileStat({ value, label }: { value: number; label: string }) {
 
 /**
  * @component CheckinsSection
- * @description Grade de check-ins do usuário em formato 3 colunas.
+ * @description Grade de check-ins recentes do usuário em formato 3 colunas.
  * Exibe nome do local e avaliação em cada célula.
- * Usa LoadingState centralizado durante o carregamento.
  */
 function CheckinsSection({ loading, checkins, onOpen }: CheckinsSectionProps) {
   return (
@@ -363,9 +388,11 @@ function CheckinsSection({ loading, checkins, onOpen }: CheckinsSectionProps) {
         <Grid3X3 size={18} />
       </div>
 
-      {/* Estado de carregamento — usa LoadingState centralizado */}
+      {/* Estado de carregamento */}
       {loading ? (
-        <LoadingState />
+        <div className="py-10 flex justify-center">
+          <Loader2 className="animate-spin" style={{ color: theme.colors.primary }} />
+        </div>
       ) : checkins.length === 0 ? (
         /* Estado vazio */
         <div className="p-6 text-center text-sm" style={{ color: theme.colors.textMuted }}>
@@ -399,6 +426,7 @@ function CheckinsSection({ loading, checkins, onOpen }: CheckinsSectionProps) {
  * @component EditProfileModal
  * @description Modal de edição do perfil do usuário.
  * Permite alterar a bio e o avatar (via upload de imagem).
+ * Posicionado no centro da tela com overlay escuro ao fundo.
  */
 function EditProfileModal({
   open,
@@ -413,99 +441,95 @@ function EditProfileModal({
   if (!open) return null;
 
   /**
-   * @function handleAvatarChange
-   * @description Processa o upload de imagem e converte para base64 para preview.
+   * @function handleImage
+   * @description Processa o upload de imagem e cria uma URL de objeto para preview.
+   * Usa URL.createObjectURL para evitar conversão base64 desnecessária.
    */
-  function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+  function handleImage(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setAvatarPreview(reader.result as string);
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    setAvatarPreview(url);
   }
 
   return (
     <>
       {/* Overlay escuro de fundo */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ background: theme.colors.mapOverlay }}
         onClick={onClose}
+        className="fixed inset-0 z-[60]"
+        style={{ background: "rgba(0,0,0,0.5)" }}
       />
 
-      {/* Painel do modal */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl p-6"
-        style={{ background: theme.colors.surface }}
-      >
-        {/* Cabeçalho do modal */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold">Editar perfil</h2>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: theme.colors.surfaceSoft }}
-            aria-label="Fechar modal"
-          >
-            <X size={18} />
-          </button>
-        </div>
+      {/* Painel do modal centralizado */}
+      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[70]">
+        <div
+          className="max-w-md mx-auto rounded-3xl border p-5"
+          style={{
+            background: theme.colors.surface,
+            borderColor: theme.colors.border,
+            boxShadow: theme.shadow.card,
+          }}
+        >
+          {/* Cabeçalho do modal */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-lg">Editar perfil</h2>
+            <button onClick={onClose} aria-label="Fechar">
+              <X size={18} />
+            </button>
+          </div>
 
-        {/* Seleção de avatar */}
-        <div className="flex justify-center mb-6">
-          <label className="cursor-pointer">
+          {/* Seleção de avatar com preview */}
+          <div className="flex flex-col items-center mb-5">
             <div
-              className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center"
+              className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center mb-3"
               style={{ background: theme.colors.surfaceSoft }}
             >
               {avatarPreview ? (
                 <img src={avatarPreview} className="w-full h-full object-cover" alt="Avatar" />
               ) : (
-                <User size={28} />
+                <User size={32} />
               )}
             </div>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-          </label>
-        </div>
+            <label
+              className="cursor-pointer text-sm font-medium"
+              style={{ color: theme.colors.primary }}
+            >
+              Alterar foto
+              <input hidden type="file" accept="image/*" onChange={handleImage} />
+            </label>
+          </div>
 
-        {/* Campo de bio */}
-        <div className="mb-6">
-          <label className="text-sm font-semibold block mb-2">Bio</label>
+          {/* Campo de bio */}
           <textarea
+            rows={4}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            rows={3}
-            placeholder="Fale um pouco sobre você..."
-            className="w-full px-4 py-3 rounded-2xl border outline-none resize-none"
+            placeholder="Fale sobre você..."
+            className="w-full rounded-2xl p-3 resize-none outline-none border"
             style={{
               background: theme.colors.surfaceSoft,
               borderColor: theme.colors.border,
               color: theme.colors.text,
             }}
           />
-        </div>
 
-        {/* Botões de ação */}
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            className="flex-1"
-            disabled={saving}
-            style={{
-              background: theme.colors.primary,
-              color: theme.colors.background,
-            }}
-            onClick={onSave}
-          >
-            {saving ? "Salvando..." : "Salvar"}
-          </Button>
+          {/* Botões de ação */}
+          <div className="grid grid-cols-2 gap-2 mt-5">
+            <Button variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={onSave}
+              disabled={saving}
+              style={{
+                background: theme.colors.primary,
+                color: theme.colors.background,
+              }}
+            >
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
         </div>
       </div>
     </>
@@ -513,38 +537,86 @@ function EditProfileModal({
 }
 
 /**
- * @component MenuOverlay
- * @description Overlay de menu lateral com opções do perfil.
- * Fecha ao clicar fora ou no botão de fechar.
+ * @component SideMenu
+ * @description Menu lateral deslizante com opções do perfil.
+ * Inclui configurações, compartilhamento, painel admin (se admin) e logout.
+ * Fecha ao clicar no overlay escuro ou no botão X.
  */
-function MenuOverlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+function SideMenu({
+  open,
+  onClose,
+  onLogout,
+  isAdmin,
+  onAdmin,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onLogout: () => void;
+  isAdmin: boolean;
+  onAdmin: () => void;
+}) {
   return (
     <>
-      {/* Fundo escuro clicável para fechar */}
+      {/* Overlay escuro de fundo */}
       <div
         className="fixed inset-0 z-40"
-        style={{ background: theme.colors.mapOverlay }}
+        style={{ background: "rgba(0,0,0,0.5)" }}
         onClick={onClose}
       />
 
-      {/* Painel do menu */}
-      <div
-        className="fixed inset-y-0 right-0 z-50 w-72 p-6 flex flex-col"
-        style={{ background: theme.colors.surface }}
+      {/* Painel lateral deslizante da direita */}
+      <aside
+        className={`fixed top-0 right-0 h-screen w-72 z-[9999] transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+        style={{
+          background: theme.colors.surface,
+          borderLeft: `1px solid ${theme.colors.border}`,
+        }}
       >
-        {/* Botão de fechar */}
-        <button
-          onClick={onClose}
-          className="self-end w-9 h-9 rounded-xl flex items-center justify-center mb-6"
-          style={{ background: theme.colors.surfaceSoft }}
-          aria-label="Fechar menu"
-        >
-          <X size={18} />
-        </button>
+        <div className="h-full flex flex-col">
+          {/* Cabeçalho do menu */}
+          <div
+            className="h-14 px-4 border-b flex items-center justify-between"
+            style={{ borderColor: theme.colors.border }}
+          >
+            <h2 className="font-bold">Menu</h2>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              aria-label="Fechar menu"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-        {/* Itens do menu */}
-        <div className="space-y-2">{children}</div>
-      </div>
+          {/* Itens do menu */}
+          <div className="p-2 space-y-1">
+            <MenuButton icon={<Settings size={18} />}>
+              Configurações
+            </MenuButton>
+            <MenuButton icon={<Share2 size={18} />}>
+              Compartilhar perfil
+            </MenuButton>
+            {/* Painel admin: visível apenas para usuários com role "admin" */}
+            {isAdmin && (
+              <MenuButton icon={<Shield size={18} />} onClick={onAdmin}>
+                Painel Admin
+              </MenuButton>
+            )}
+          </div>
+
+          {/* Botão de logout fixado no rodapé do menu */}
+          <div
+            className="mt-auto p-2 border-t"
+            style={{ borderColor: theme.colors.border }}
+          >
+            <MenuButton danger icon={<LogOut size={18} color="#ef4444" />} onClick={onLogout}>
+              Sair
+            </MenuButton>
+          </div>
+        </div>
+      </aside>
     </>
   );
 }
@@ -554,18 +626,15 @@ function MenuOverlay({ children, onClose }: { children: ReactNode; onClose: () =
  * @description Botão de item do menu lateral.
  * Suporta estilo de "perigo" (vermelho) para ações destrutivas como logout.
  */
-function MenuButton({ children, icon, danger = false, onClick }: MenuButtonProps) {
+function MenuButton({ children, icon, danger, onClick }: MenuButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition"
-      style={{
-        background: theme.colors.surfaceSoft,
-        color: danger ? theme.colors.destructive : theme.colors.text,
-      }}
+      className="w-full min-h-[46px] px-3 rounded-xl flex items-center gap-3 text-sm text-left"
+      style={{ color: danger ? theme.colors.danger : theme.colors.text }}
     >
       {icon}
-      <span className="font-medium">{children}</span>
+      <span>{children}</span>
     </button>
   );
 }

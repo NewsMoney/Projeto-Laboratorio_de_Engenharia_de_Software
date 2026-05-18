@@ -1,7 +1,8 @@
 /**
  * @file Login.tsx
  * @description Página de login do usuário.
- * Permite ao usuário autenticar-se com email e senha.
+ * Aceita autenticação com email OU username — o campo detecta automaticamente
+ * o que foi digitado: se contiver "@" é tratado como email, caso contrário como username.
  * Redireciona para a página inicial após login bem-sucedido.
  * Oferece link para a página de registro de novos usuários.
  */
@@ -20,7 +21,10 @@ import { toast } from "sonner";
 
 /**
  * @component Login
- * @description Formulário de login com campos de email e senha.
+ * @description Formulário de login com campo único de identificação (email ou username) e senha.
+ * O campo "Email ou usuário" detecta automaticamente o tipo de entrada:
+ * - Se contiver "@", envia como `email` para o backend
+ * - Caso contrário, envia como `username`
  * Exibe/oculta a senha com botão de alternância.
  * Redireciona para "/" após autenticação bem-sucedida.
  */
@@ -28,7 +32,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
 
   /* Estado dos campos do formulário */
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // email ou username
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -39,17 +43,26 @@ export default function Login() {
   /**
    * @function handleSubmit
    * @description Processa o envio do formulário de login.
+   * Detecta se o identificador é email (contém "@") ou username e envia
+   * o campo correto para o backend. O backend exige exatamente um dos dois.
    * Em caso de sucesso, invalida o cache de autenticação e redireciona.
    * Em caso de erro, exibe uma notificação toast.
    */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    /* Determina se o usuário digitou email ou username */
+    const isEmail = identifier.includes("@");
+
     try {
-      await loginMutation.mutateAsync({ email, password });
+      await loginMutation.mutateAsync(
+        isEmail
+          ? { email: identifier, password }
+          : { username: identifier, password }
+      );
       await utils.auth.me.invalidate();
       setLocation("/");
     } catch {
-      toast.error("Email ou senha incorretos. Tente novamente.");
+      toast.error("Credenciais inválidas. Verifique seu email/usuário e senha.");
     }
   }
 
@@ -80,15 +93,18 @@ export default function Login() {
 
         {/* Formulário de login */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Campo de email */}
+          {/* Campo único: aceita email ou username */}
           <div>
-            <label className="text-sm font-semibold block mb-2">Email</label>
+            <label className="text-sm font-semibold block mb-2">
+              Email ou usuário
+            </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="seu@email.com ou seu_usuario"
               required
+              autoComplete="username"
               className={inputClass()}
               style={{
                 background: theme.colors.surface,
