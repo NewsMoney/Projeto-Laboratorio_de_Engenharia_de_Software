@@ -1,520 +1,790 @@
 import { useMemo, useState } from "react";
+
 import { useLocation } from "wouter";
+
 import {
   ArrowLeft,
-  BadgeCheck,
   Ban,
   CalendarClock,
-  CheckCircle2,
-  ChevronRight,
   Clock,
   Crown,
   Eye,
   Filter,
-  Lock,
   Mail,
   Plus,
   Search,
-  Shield,
   ShieldCheck,
-  Sparkles,
-  UserPlus,
   UsersRound,
   X,
 } from "lucide-react";
 
 import { theme } from "@/lib/theme";
 
-type AccountRole = "admin" | "moderator" | "user";
-type AccountStatus = "active" | "blocked" | "pending";
-type FilterRole = "all" | AccountRole;
+import { trpc } from "@/lib/trpc";
 
-type UserAccount = {
-  id: number;
-  name: string;
-  email: string;
-  role: AccountRole;
-  status: AccountStatus;
-  createdAt: string;
-  lastSeen: string;
-  actionsCount: number;
-};
+type AccountRole =
+  | "admin"
+  | "moderator"
+  | "user";
 
-type AdminAction = {
-  id: number;
-  actor: string;
-  actorRole: AccountRole;
-  action: string;
-  target: string;
-  description: string;
-  date: string;
-  severity: "info" | "warning" | "success";
-};
+type FilterRole =
+  | "all"
+  | AccountRole;
 
-const roleLabels: Record<AccountRole, string> = {
+const roleLabels = {
   admin: "ADM",
   moderator: "Moderador",
   user: "Usuário",
 };
 
-const statusLabels: Record<AccountStatus, string> = {
-  active: "Ativo",
-  blocked: "Bloqueado",
-  pending: "Pendente",
-};
-
-const initialUsers: UserAccount[] = [
-  {
-    id: 1,
-    name: "Matheus Falcão",
-    email: "matheus@falcaotecnologia.com.br",
-    role: "admin",
-    status: "active",
-    createdAt: "12 mai 2026",
-    lastSeen: "Agora",
-    actionsCount: 42,
-  },
-  {
-    id: 2,
-    name: "Marina Costa",
-    email: "marina@email.com",
-    role: "moderator",
-    status: "active",
-    createdAt: "10 mai 2026",
-    lastSeen: "15 min atrás",
-    actionsCount: 18,
-  },
-  {
-    id: 3,
-    name: "Rafael Lima",
-    email: "rafael@email.com",
-    role: "user",
-    status: "pending",
-    createdAt: "09 mai 2026",
-    lastSeen: "Ontem",
-    actionsCount: 2,
-  },
-  {
-    id: 4,
-    name: "Bianca Torres",
-    email: "bianca@email.com",
-    role: "user",
-    status: "active",
-    createdAt: "08 mai 2026",
-    lastSeen: "2h atrás",
-    actionsCount: 7,
-  },
-  {
-    id: 5,
-    name: "Lucas Andrade",
-    email: "lucas@email.com",
-    role: "moderator",
-    status: "blocked",
-    createdAt: "04 mai 2026",
-    lastSeen: "3 dias atrás",
-    actionsCount: 11,
-  },
-];
-
-const timelineActions: AdminAction[] = [
-  {
-    id: 1,
-    actor: "Matheus Falcão",
-    actorRole: "admin",
-    action: "Criou conta moderadora",
-    target: "Marina Costa",
-    description: "Permissão concedida para revisar festas, locais e denúncias.",
-    date: "Hoje, 14:32",
-    severity: "success",
-  },
-  {
-    id: 2,
-    actor: "Marina Costa",
-    actorRole: "moderator",
-    action: "Alterou status de evento",
-    target: "Deep House Sessions",
-    description: "Evento movido de rascunho para análise antes da publicação.",
-    date: "Hoje, 13:08",
-    severity: "info",
-  },
-  {
-    id: 3,
-    actor: "Matheus Falcão",
-    actorRole: "admin",
-    action: "Bloqueou conta",
-    target: "Lucas Andrade",
-    description: "Conta bloqueada após alterações suspeitas em múltiplos eventos.",
-    date: "Ontem, 22:41",
-    severity: "warning",
-  },
-  {
-    id: 4,
-    actor: "Marina Costa",
-    actorRole: "moderator",
-    action: "Editou localização",
-    target: "Warehouse 21",
-    description: "Coordenada atualizada para corrigir exibição no mapa.",
-    date: "Ontem, 18:10",
-    severity: "info",
-  },
-];
-
-const filterOptions: Array<{ value: FilterRole; label: string }> = [
-  { value: "all", label: "Todos" },
-  { value: "admin", label: "ADMs" },
-  { value: "moderator", label: "Moderadores" },
-  { value: "user", label: "Usuários" },
-];
-
 export default function Usuarios() {
-  const [, setLocation] = useLocation();
-  const [users, setUsers] = useState(initialUsers);
-  const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<FilterRole>("all");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newAccount, setNewAccount] = useState({
-    name: "",
-    email: "",
-    role: "moderator" as Exclude<AccountRole, "user">,
-  });
+  const [, setLocation] =
+    useLocation();
 
+  /**
+   * FILTERS
+   */
+  const [query, setQuery] =
+    useState("");
+
+  const [roleFilter, setRoleFilter] =
+    useState<FilterRole>("all");
+
+  const [showFilters, setShowFilters] =
+    useState(false);
+
+  const [sortBy, setSortBy] =
+    useState("recent");
+
+  /**
+   * CREATE MODAL
+   */
+  const [isCreateOpen, setIsCreateOpen] =
+    useState(false);
+
+  const [newUser, setNewUser] =
+    useState({
+      name: "",
+      username: "",
+      email: "",
+      password: "",
+
+      role: "admin" as
+        | "admin"
+        | "moderator",
+    });
+
+  const utils = trpc.useUtils();
+
+  /**
+   * USERS QUERY
+   */
+  const {
+    data: usersData = [],
+    isLoading,
+  } =
+    trpc.users.getAll.useQuery();
+
+  /**
+   * REGISTER
+   */
+  const registerUser =
+    trpc.auth.register.useMutation();
+
+  /**
+   * UPDATE ROLE
+   */
+  const updateRole =
+    trpc.users.updateRole.useMutation({
+      onSuccess:
+        async () => {
+          await utils.users.getAll.invalidate();
+        },
+    });
+
+  /**
+   * CREATE ADMIN
+   */
+  async function handleCreateAdmin() {
+    if (
+      !newUser.name ||
+      !newUser.username ||
+      !newUser.email ||
+      !newUser.password
+    ) {
+      return;
+    }
+
+    try {
+      const created =
+        await registerUser.mutateAsync({
+          name: newUser.name,
+
+          username:
+            newUser.username,
+
+          email:
+            newUser.email,
+
+          password:
+            newUser.password,
+
+          birthDate:
+            "2000-01-01",
+        });
+
+      await updateRole.mutateAsync({
+        userId: created.id,
+
+        role: newUser.role,
+      });
+
+      await utils.users.getAll.invalidate();
+
+      setNewUser({
+        name: "",
+        username: "",
+        email: "",
+        password: "",
+        role: "admin",
+      });
+
+      setIsCreateOpen(false);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  /**
+   * FORMAT USERS
+   */
+  const users = useMemo(() => {
+    return usersData.map((user) => ({
+      id: user.id,
+
+      name: user.name,
+
+      email: user.email,
+
+      username:
+        user.username,
+
+      role:
+        user.role as AccountRole,
+
+      createdAt: new Date(
+        user.createdAt
+      ).toLocaleDateString(
+        "pt-BR"
+      ),
+
+      lastSeen: user.updatedAt
+        ? new Date(
+            user.updatedAt
+          ).toLocaleDateString(
+            "pt-BR"
+          )
+        : "Nunca",
+
+      actionsCount:
+        user.actionsCount ?? 0,
+    }));
+  }, [usersData]);
+
+  /**
+   * METRICS
+   */
   const metrics = useMemo(() => {
-    const total = users.length;
-    const admins = users.filter((user) => user.role === "admin").length;
-    const moderators = users.filter((user) => user.role === "moderator").length;
-    const blocked = users.filter((user) => user.status === "blocked").length;
+    return {
+      total: users.length,
 
-    return { total, admins, moderators, blocked };
+      admins: users.filter(
+        (u) => u.role === "admin"
+      ).length,
+
+      moderators: users.filter(
+        (u) =>
+          u.role ===
+          "moderator"
+      ).length,
+
+      users: users.filter(
+        (u) => u.role === "user"
+      ).length,
+    };
   }, [users]);
 
-  const filteredUsers = useMemo(() => {
-    const search = query.trim().toLowerCase();
+  /**
+   * FILTER USERS
+   */
+  const filteredUsers =
+    useMemo(() => {
+      const search = query
+        .trim()
+        .toLowerCase();
 
-    return users.filter((user) => {
-      const matchesSearch =
-        !search ||
-        user.name.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search);
+      let filtered =
+        users.filter((user) => {
+          const matchesSearch =
+            !search ||
+            user.name
+              .toLowerCase()
+              .includes(search) ||
+            user.email
+              .toLowerCase()
+              .includes(search);
 
-      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+          const matchesRole =
+            roleFilter ===
+              "all" ||
+            user.role ===
+              roleFilter;
 
-      return matchesSearch && matchesRole;
-    });
-  }, [query, roleFilter, users]);
+          return (
+            matchesSearch &&
+            matchesRole
+          );
+        });
 
-  function goBack() {
-    setLocation("/admin");
-  }
+      switch (sortBy) {
+        case "name":
+          filtered.sort((a, b) =>
+            a.name.localeCompare(
+              b.name
+            )
+          );
+          break;
 
-  function openCreateAccount(role: Exclude<AccountRole, "user">) {
-    setNewAccount({ name: "", email: "", role });
-    setIsCreateOpen(true);
-  }
+        case "checkins":
+          filtered.sort(
+            (a, b) =>
+              b.actionsCount -
+              a.actionsCount
+          );
+          break;
 
-  function closeCreateAccount() {
-    setIsCreateOpen(false);
-    setNewAccount({ name: "", email: "", role: "moderator" });
-  }
+        case "oldest":
+          filtered.reverse();
+          break;
 
-  function handleCreateAccount() {
-    const name = newAccount.name.trim();
-    const email = newAccount.email.trim();
+        default:
+          break;
+      }
 
-    if (!name || !email) return;
+      return filtered;
+    }, [
+      users,
+      query,
+      roleFilter,
+      sortBy,
+    ]);
 
-    const account: UserAccount = {
-      id: Date.now(),
-      name,
-      email,
-      role: newAccount.role,
-      status: "active",
-      createdAt: "Agora",
-      lastSeen: "Nunca acessou",
-      actionsCount: 0,
-    };
-
-    setUsers((prev) => [account, ...prev]);
-    closeCreateAccount();
-  }
-
-  function getInitials(name: string) {
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
+  /**
+   * LOADING
+   */
+  if (isLoading) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center text-white"
+        style={{
+          background:
+            theme.colors.background,
+        }}
+      >
+        Carregando usuários...
+      </div>
+    );
   }
 
   return (
     <div
-      className="min-h-screen overflow-y-auto px-4 py-6 md:px-8"
-      style={{ background: theme.colors.background }}
+      className="min-h-screen p-6 text-white"
+      style={{
+        background:
+          theme.colors.background,
+      }}
     >
-      <div className="mx-auto max-w-7xl pb-10">
-        <header className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-start gap-4 md:gap-5">
+      <div className="mx-auto max-w-7xl">
+        {/* HEADER */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button
-              type="button"
-              onClick={goBack}
-              aria-label="Voltar para admin"
-              className="flex h-13 w-13 shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/75 transition hover:border-emerald-400 hover:text-emerald-400 hover:shadow-[0_0_22px_rgba(0,255,100,0.25)] md:h-14 md:w-14"
+              onClick={() =>
+                setLocation("/admin")
+              }
+              className="rounded-xl border border-white/10 p-3 transition hover:border-emerald-400/40"
             >
-              <ArrowLeft size={25} />
+              <ArrowLeft size={20} />
             </button>
 
             <div>
-              <p className="mb-2 text-sm font-bold uppercase tracking-[0.24em] text-emerald-400">
-                Controle administrativo
-              </p>
-
-              <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
+              <h1 className="text-4xl font-bold">
                 Usuários
               </h1>
 
-              <p className="mt-2 max-w-2xl text-base leading-relaxed text-white/55 md:text-lg">
-                Consulte contas, acompanhe permissões de ADM e moderador, crie novos acessos e audite alterações feitas na plataforma.
+              <p className="text-white/50">
+                Gerenciamento de usuários da plataforma
               </p>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => openCreateAccount("admin")}
-              className="flex min-h-[58px] items-center justify-center gap-3 rounded-3xl border border-emerald-400 bg-emerald-400 px-5 font-bold text-black shadow-[0_0_30px_rgba(0,255,100,0.42)] transition hover:scale-[1.01] hover:bg-emerald-300"
-            >
-              <Crown size={22} />
-              Criar ADM
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openCreateAccount("moderator")}
-              className="flex min-h-[58px] items-center justify-center gap-3 rounded-3xl border border-emerald-400 bg-black/30 px-5 font-bold text-emerald-400 transition hover:bg-emerald-400/10 hover:shadow-[0_0_24px_rgba(0,255,100,0.22)]"
-            >
-              <ShieldCheck size={22} />
-              Criar moderador
-            </button>
-          </div>
-        </header>
-
-        <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            icon={<UsersRound size={24} />}
-            title="Total de usuários"
-            value={String(metrics.total)}
-            description="Contas cadastradas"
-          />
-
-          <MetricCard
-            icon={<Crown size={24} />}
-            title="Contas ADM"
-            value={String(metrics.admins)}
-            description="Acesso administrativo total"
-          />
-
-          <MetricCard
-            icon={<ShieldCheck size={24} />}
-            title="Moderadores"
-            value={String(metrics.moderators)}
-            description="Contas com permissão parcial"
-          />
-
-          <MetricCard
-            icon={<Ban size={24} />}
-            title="Bloqueadas"
-            value={String(metrics.blocked)}
-            description="Contas suspensas ou travadas"
-          />
-        </section>
-
-        <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-          <Panel
-            title="Contas da plataforma"
-            description="Analise usuários comuns, moderadores e administradores."
+          <button
+            onClick={() =>
+              setIsCreateOpen(true)
+            }
+            className="flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-6 py-3 font-bold text-emerald-400 transition hover:bg-emerald-400/20"
           >
-            <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
-              <label className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 text-white/60 focus-within:border-emerald-400/70">
-                <Search size={20} className="text-emerald-400" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/35"
-                  placeholder="Buscar por nome ou e-mail"
-                />
-              </label>
+            <Plus size={18} />
+            Criar ADM
+          </button>
+        </div>
 
-              <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/25 p-2">
-                <div className="flex items-center gap-2 px-2 text-sm font-bold text-white/45">
-                  <Filter size={17} />
-                </div>
+        {/* METRICS */}
+        <div className="mb-6 grid gap-4 md:grid-cols-4">
+          <MetricCard
+            title="Usuários"
+            value={metrics.total}
+            icon={<UsersRound />}
+          />
 
-                {filterOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setRoleFilter(option.value)}
-                    className={[
-                      "rounded-xl px-4 py-2 text-sm font-bold transition",
-                      roleFilter === option.value
-                        ? "bg-emerald-400 text-black"
-                        : "text-white/55 hover:bg-white/5 hover:text-emerald-400",
-                    ].join(" ")}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+          <MetricCard
+            title="Administradores"
+            value={metrics.admins}
+            icon={<Crown />}
+          />
+
+          <MetricCard
+            title="Moderadores"
+            value={
+              metrics.moderators
+            }
+            icon={<ShieldCheck />}
+          />
+
+          <MetricCard
+            title="Usuários comuns"
+            value={metrics.users}
+            icon={<UsersRound />}
+          />
+        </div>
+
+        {/* SEARCH + FILTER */}
+        <div className="mb-5">
+          <div className="flex gap-4">
+            {/* SEARCH */}
+            <div className="flex flex-1 items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4">
+              <Search size={18} />
+
+              <input
+                value={query}
+                onChange={(e) =>
+                  setQuery(
+                    e.target.value
+                  )
+                }
+                placeholder="Buscar usuário"
+                className="h-14 w-full bg-transparent outline-none"
+              />
             </div>
 
-            <div className="space-y-3">
-              {filteredUsers.map((user) => (
-                <UserRow key={user.id} user={user} initials={getInitials(user.name)} />
-              ))}
-
-              {filteredUsers.length === 0 && (
-                <div className="rounded-2xl border border-white/10 bg-black/25 p-8 text-center">
-                  <p className="text-lg font-bold text-white">Nenhum usuário encontrado</p>
-                  <p className="mt-2 text-sm text-white/45">
-                    Ajuste a busca ou selecione outro filtro de conta.
-                  </p>
-                </div>
-              )}
-            </div>
-          </Panel>
-
-          <div className="space-y-5">
-            <Panel
-              title="Criar acesso administrativo"
-              description="Adicione rapidamente uma conta ADM ou moderadora."
+            {/* ROLE FILTER */}
+            <select
+              value={roleFilter}
+              onChange={(e) =>
+                setRoleFilter(
+                  e.target
+                    .value as FilterRole
+                )
+              }
+              className="rounded-2xl border border-white/10 bg-black/30 px-5 outline-none"
             >
-              <div className="grid gap-3">
-                <CreateRoleCard
-                  icon={<Crown size={24} />}
-                  title="Nova conta ADM"
-                  description="Permissão completa para gerenciar usuários, eventos e relatórios."
-                  onClick={() => openCreateAccount("admin")}
-                />
+              <option value="all">
+                Todos
+              </option>
 
-                <CreateRoleCard
-                  icon={<Shield size={24} />}
-                  title="Nova conta moderadora"
-                  description="Permissão para revisar ações, eventos e alterações operacionais."
-                  onClick={() => openCreateAccount("moderator")}
-                />
-              </div>
-            </Panel>
+              <option value="admin">
+                ADMs
+              </option>
 
-            <Panel
-              title="Linha do tempo"
-              description="Ações e alterações feitas por ADMs e moderadores."
+              <option value="moderator">
+                Moderadores
+              </option>
+
+              <option value="user">
+                Usuários
+              </option>
+            </select>
+
+            {/* FILTER BUTTON */}
+            <button
+              onClick={() =>
+                setShowFilters(
+                  !showFilters
+                )
+              }
+              className={[
+                "rounded-2xl border px-5 transition",
+
+                showFilters
+                  ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-400"
+                  : "border-white/10",
+              ].join(" ")}
             >
-              <div className="space-y-4">
-                {timelineActions.map((action, index) => (
-                  <TimelineItem
-                    key={action.id}
-                    action={action}
-                    isLast={index === timelineActions.length - 1}
-                  />
-                ))}
-              </div>
-            </Panel>
+              <Filter size={18} />
+            </button>
           </div>
-        </section>
+
+          {/* ADVANCED FILTERS */}
+          {showFilters && (
+            <div className="mt-4 grid gap-4 rounded-2xl border border-white/10 bg-black/20 p-5 md:grid-cols-3">
+              {/* ROLE */}
+              <div>
+                <label className="mb-2 block text-sm text-white/50">
+                  Tipo de conta
+                </label>
+
+                <select
+                  value={roleFilter}
+                  onChange={(e) =>
+                    setRoleFilter(
+                      e.target
+                        .value as FilterRole
+                    )
+                  }
+                  className="h-12 w-full rounded-xl border border-white/10 bg-black/30 px-4 outline-none"
+                >
+                  <option value="all">
+                    Todos
+                  </option>
+
+                  <option value="admin">
+                    ADMs
+                  </option>
+
+                  <option value="moderator">
+                    Moderadores
+                  </option>
+
+                  <option value="user">
+                    Usuários
+                  </option>
+                </select>
+              </div>
+
+              {/* SORT */}
+              <div>
+                <label className="mb-2 block text-sm text-white/50">
+                  Ordenação
+                </label>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(
+                      e.target.value
+                    )
+                  }
+                  className="h-12 w-full rounded-xl border border-white/10 bg-black/30 px-4 outline-none"
+                >
+                  <option value="recent">
+                    Mais recentes
+                  </option>
+
+                  <option value="oldest">
+                    Mais antigos
+                  </option>
+
+                  <option value="name">
+                    Nome A-Z
+                  </option>
+
+                  <option value="checkins">
+                    Mais check-ins
+                  </option>
+                </select>
+              </div>
+
+              {/* CLEAR */}
+              <div>
+                <label className="mb-2 block text-sm text-white/50">
+                  Ações
+                </label>
+
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setRoleFilter(
+                      "all"
+                    );
+                    setSortBy(
+                      "recent"
+                    );
+                  }}
+                  className="h-12 w-full rounded-xl border border-red-400/30 bg-red-400/10 font-bold text-red-300 transition hover:bg-red-400/20"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* USERS */}
+        <div className="space-y-4">
+          {filteredUsers.map((user) => (
+            <div
+              key={user.id}
+              className="rounded-2xl border border-white/10 bg-black/20 p-5"
+            >
+              <div className="flex items-center justify-between gap-5">
+                {/* INFO */}
+                <div className="flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-bold">
+                      {user.name}
+                    </h2>
+
+                    <RoleBadge
+                      role={user.role}
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-sm text-white/50">
+                    <div className="flex items-center gap-2">
+                      <Mail size={14} />
+
+                      {user.email}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <CalendarClock size={14} />
+
+                      Criado em{" "}
+                      {
+                        user.createdAt
+                      }
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} />
+
+                      Última atividade:{" "}
+                      {
+                        user.lastSeen
+                      }
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Eye size={14} />
+
+                      {
+                        user.actionsCount
+                      }{" "}
+                      check-ins
+                    </div>
+                  </div>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() =>
+                      updateRole.mutate({
+                        userId:
+                          user.id,
+
+                        role:
+                          "admin",
+                      })
+                    }
+                    disabled={
+                      updateRole.isPending
+                    }
+                    className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-400 transition hover:bg-emerald-400/20"
+                  >
+                    Tornar ADM
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      updateRole.mutate({
+                        userId:
+                          user.id,
+
+                        role:
+                          "moderator",
+                      })
+                    }
+                    disabled={
+                      updateRole.isPending
+                    }
+                    className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/20"
+                  >
+                    Tornar Moderador
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      updateRole.mutate({
+                        userId:
+                          user.id,
+
+                        role:
+                          "user",
+                      })
+                    }
+                    disabled={
+                      updateRole.isPending
+                    }
+                    className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:bg-red-400/20"
+                  >
+                    Remover Permissões
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* EMPTY */}
+          {filteredUsers.length ===
+            0 && (
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-10 text-center">
+              <Ban
+                size={42}
+                className="mx-auto mb-4 text-white/20"
+              />
+
+              <h2 className="text-xl font-bold">
+                Nenhum usuário encontrado
+              </h2>
+
+              <p className="mt-2 text-white/50">
+                Tente ajustar sua
+                pesquisa.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* CREATE MODAL */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-[32px] border border-emerald-400/35 bg-[#050b10] p-5 shadow-[0_0_45px_rgba(0,255,100,0.2)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="mb-2 text-sm font-bold uppercase tracking-[0.22em] text-emerald-400">
-                  Novo acesso
-                </p>
-                <h2 className="text-2xl font-bold text-white">
-                  Criar conta {roleLabels[newAccount.role]}
-                </h2>
-                <p className="mt-1 text-sm text-white/45">
-                  Preencha os dados para liberar uma nova conta administrativa.
-                </p>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#050b10] p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">
+                Criar conta administrativa
+              </h2>
 
               <button
-                type="button"
-                onClick={closeCreateAccount}
-                aria-label="Fechar criação de conta"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/55 transition hover:border-red-400/60 hover:text-red-400"
+                onClick={() =>
+                  setIsCreateOpen(false)
+                }
+                className="rounded-xl border border-white/10 p-2"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             <div className="space-y-4">
-              <Field label="Nome" icon={<UserPlus size={20} />}>
-                <input
-                  value={newAccount.name}
-                  onChange={(event) =>
-                    setNewAccount((prev) => ({ ...prev, name: event.target.value }))
-                  }
-                  className="input-dark"
-                  placeholder="Ex: Ana Souza"
-                />
-              </Field>
+              <input
+                placeholder="Nome"
+                value={newUser.name}
+                onChange={(e) =>
+                  setNewUser({
+                    ...newUser,
+                    name:
+                      e.target.value,
+                  })
+                }
+                className="h-14 w-full rounded-2xl border border-white/10 bg-black/30 px-4 outline-none"
+              />
 
-              <Field label="E-mail" icon={<Mail size={20} />}>
-                <input
-                  value={newAccount.email}
-                  onChange={(event) =>
-                    setNewAccount((prev) => ({ ...prev, email: event.target.value }))
-                  }
-                  className="input-dark"
-                  placeholder="ana@email.com"
-                  type="email"
-                />
-              </Field>
+              <input
+                placeholder="Username"
+                value={newUser.username}
+                onChange={(e) =>
+                  setNewUser({
+                    ...newUser,
+                    username:
+                      e.target.value,
+                  })
+                }
+                className="h-14 w-full rounded-2xl border border-white/10 bg-black/30 px-4 outline-none"
+              />
 
-              <Field label="Tipo de conta" icon={<Lock size={20} />}>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <RoleOption
-                    active={newAccount.role === "admin"}
-                    icon={<Crown size={22} />}
-                    label="ADM"
-                    description="Acesso total"
-                    onClick={() =>
-                      setNewAccount((prev) => ({ ...prev, role: "admin" }))
-                    }
-                  />
+              <input
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) =>
+                  setNewUser({
+                    ...newUser,
+                    email:
+                      e.target.value,
+                  })
+                }
+                className="h-14 w-full rounded-2xl border border-white/10 bg-black/30 px-4 outline-none"
+              />
 
-                  <RoleOption
-                    active={newAccount.role === "moderator"}
-                    icon={<ShieldCheck size={22} />}
-                    label="Moderador"
-                    description="Acesso operacional"
-                    onClick={() =>
-                      setNewAccount((prev) => ({ ...prev, role: "moderator" }))
-                    }
-                  />
-                </div>
-              </Field>
+              <input
+                type="password"
+                placeholder="Senha"
+                value={newUser.password}
+                onChange={(e) =>
+                  setNewUser({
+                    ...newUser,
+                    password:
+                      e.target.value,
+                  })
+                }
+                className="h-14 w-full rounded-2xl border border-white/10 bg-black/30 px-4 outline-none"
+              />
+
+              <select
+                value={newUser.role}
+                onChange={(e) =>
+                  setNewUser({
+                    ...newUser,
+
+                    role:
+                      e.target
+                        .value as
+                        | "admin"
+                        | "moderator",
+                  })
+                }
+                className="h-14 w-full rounded-2xl border border-white/10 bg-black/30 px-4 outline-none"
+              >
+                <option value="admin">
+                  ADM
+                </option>
+
+                <option value="moderator">
+                  Moderador
+                </option>
+              </select>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 flex gap-4">
               <button
-                type="button"
-                onClick={closeCreateAccount}
-                className="flex min-h-[54px] items-center justify-center rounded-2xl border border-white/10 bg-black/30 font-bold text-white/60 transition hover:border-white/25 hover:text-white"
+                onClick={() =>
+                  setIsCreateOpen(false)
+                }
+                className="h-14 flex-1 rounded-2xl border border-white/10"
               >
                 Cancelar
               </button>
 
               <button
-                type="button"
-                onClick={handleCreateAccount}
-                className="flex min-h-[54px] items-center justify-center gap-3 rounded-2xl bg-emerald-400 font-bold text-black transition hover:bg-emerald-300"
+                onClick={
+                  handleCreateAdmin
+                }
+                disabled={
+                  registerUser.isPending ||
+                  updateRole.isPending
+                }
+                className="h-14 flex-1 rounded-2xl bg-emerald-400 font-bold text-black"
               >
-                <Plus size={20} />
                 Criar conta
               </button>
             </div>
@@ -525,289 +795,47 @@ export default function Usuarios() {
   );
 }
 
-function Panel({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-[30px] border border-white/10 bg-[#050b10]/95 p-5 shadow-[0_0_35px_rgba(0,0,0,0.45)]">
-      <div className="mb-5">
-        <h2 className="text-xl font-bold text-white">{title}</h2>
-        {description && <p className="mt-1 text-sm text-white/45">{description}</p>}
-      </div>
-
-      {children}
-    </section>
-  );
-}
-
-function Field({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="mb-3 flex items-center gap-3 text-base font-semibold text-white/70">
-        <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(0,255,100,0.45)]">
-          {icon}
-        </span>
-        <span>{label}</span>
-      </div>
-
-      {children}
-    </div>
-  );
-}
-
 function MetricCard({
-  icon,
   title,
   value,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  value: string;
-  description: string;
-}) {
+  icon,
+}: any) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-[#050b10]/95 p-5 shadow-[0_0_30px_rgba(0,0,0,0.35)]">
-      <div className="mb-5 flex h-13 w-13 items-center justify-center rounded-2xl border border-emerald-400/60 bg-emerald-400/10 text-emerald-400">
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+      <div className="mb-4 text-emerald-400">
         {icon}
       </div>
 
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/40">
+      <div className="text-sm text-white/50">
         {title}
-      </p>
+      </div>
 
-      <h3 className="mt-2 text-4xl font-black text-white">{value}</h3>
-
-      <p className="mt-2 text-sm text-white/45">{description}</p>
+      <div className="mt-2 text-4xl font-black">
+        {value}
+      </div>
     </div>
   );
 }
 
-function UserRow({
-  user,
-  initials,
+function RoleBadge({
+  role,
 }: {
-  user: UserAccount;
-  initials: string;
+  role: AccountRole;
 }) {
   return (
-    <div className="grid gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:border-emerald-400/45 lg:grid-cols-[1fr_auto]">
-      <div className="flex min-w-0 items-start gap-4">
-        <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-sm font-black text-emerald-400">
-          {initials}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate font-bold text-white">{user.name}</h3>
-            <RoleBadge role={user.role} />
-            <StatusBadge status={user.status} />
-          </div>
-
-          <div className="mt-2 grid gap-1 text-sm text-white/45 sm:grid-cols-2 xl:grid-cols-3">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <Mail size={15} className="shrink-0" />
-              <span className="truncate">{user.email}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CalendarClock size={15} />
-              Criado em {user.createdAt}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock size={15} />
-              {user.lastSeen}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 lg:justify-end">
-        <div className="rounded-2xl border border-white/10 bg-black/35 px-4 py-2 text-sm">
-          <p className="font-bold text-white">{user.actionsCount}</p>
-          <p className="text-xs text-white/35">ações</p>
-        </div>
-
-        <button
-          type="button"
-          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/35 text-white/45 transition hover:border-emerald-400/70 hover:text-emerald-400"
-          aria-label={`Analisar conta de ${user.name}`}
-        >
-          <Eye size={20} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function RoleBadge({ role }: { role: AccountRole }) {
-  const isAdmin = role === "admin";
-  const isModerator = role === "moderator";
-
-  return (
-    <span
+    <div
       className={[
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
-        isAdmin
-          ? "border-emerald-400 bg-emerald-400/15 text-emerald-400"
-          : isModerator
-            ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-200"
-            : "border-white/10 bg-white/5 text-white/50",
+        "rounded-full px-3 py-1 text-xs font-bold",
+
+        role === "admin"
+          ? "bg-emerald-400/10 text-emerald-400"
+          : role ===
+              "moderator"
+            ? "bg-cyan-400/10 text-cyan-300"
+            : "bg-white/10 text-white/70",
       ].join(" ")}
     >
-      {isAdmin ? <Crown size={13} /> : isModerator ? <ShieldCheck size={13} /> : <UsersRound size={13} />}
       {roleLabels[role]}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: AccountStatus }) {
-  const isActive = status === "active";
-  const isBlocked = status === "blocked";
-
-  return (
-    <span
-      className={[
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
-        isActive
-          ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400"
-          : isBlocked
-            ? "border-red-400/50 bg-red-400/10 text-red-300"
-            : "border-yellow-300/50 bg-yellow-300/10 text-yellow-200",
-      ].join(" ")}
-    >
-      {isActive ? <CheckCircle2 size={13} /> : isBlocked ? <Ban size={13} /> : <Clock size={13} />}
-      {statusLabels[status]}
-    </span>
-  );
-}
-
-function CreateRoleCard({
-  icon,
-  title,
-  description,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex items-start gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 text-left transition hover:border-emerald-400/70 hover:bg-emerald-400/5"
-    >
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/50 bg-emerald-400/10 text-emerald-400 transition group-hover:bg-emerald-400 group-hover:text-black">
-        {icon}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <h3 className="font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-white/45">{description}</p>
-      </div>
-
-      <ChevronRight className="mt-3 text-white/30 transition group-hover:text-emerald-400" size={20} />
-    </button>
-  );
-}
-
-function RoleOption({
-  active,
-  icon,
-  label,
-  description,
-  onClick,
-}: {
-  active: boolean;
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "flex min-h-[92px] items-center gap-4 rounded-2xl border p-4 text-left transition",
-        active
-          ? "border-emerald-400 bg-emerald-400/12 shadow-[0_0_26px_rgba(0,255,100,0.28)]"
-          : "border-white/10 bg-black/25 hover:border-emerald-400/60 hover:bg-emerald-400/5",
-      ].join(" ")}
-    >
-      <div
-        className={[
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition",
-          active
-            ? "border-emerald-400 bg-emerald-400 text-black"
-            : "border-white/10 bg-black/40 text-emerald-400",
-        ].join(" ")}
-      >
-        {icon}
-      </div>
-
-      <div>
-        <h3 className={active ? "text-lg font-bold text-emerald-400" : "text-lg font-bold text-white"}>
-          {label}
-        </h3>
-        <p className="mt-1 text-sm text-white/45">{description}</p>
-      </div>
-    </button>
-  );
-}
-
-function TimelineItem({
-  action,
-  isLast,
-}: {
-  action: AdminAction;
-  isLast: boolean;
-}) {
-  return (
-    <div className="relative flex gap-4">
-      {!isLast && <div className="absolute left-[22px] top-12 h-[calc(100%-18px)] w-px bg-emerald-400/20" />}
-
-      <div
-        className={[
-          "relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-black text-emerald-400",
-          action.severity === "warning"
-            ? "border-red-400/50 text-red-300"
-            : action.severity === "success"
-              ? "border-emerald-400/60 text-emerald-400"
-              : "border-white/10 text-white/55",
-        ].join(" ")}
-      >
-        {action.severity === "warning" ? <Ban size={19} /> : action.severity === "success" ? <BadgeCheck size={19} /> : <Sparkles size={19} />}
-      </div>
-
-      <div className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/25 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-bold text-white">{action.action}</h3>
-          <span className="text-xs font-semibold text-white/35">{action.date}</span>
-        </div>
-
-        <p className="mt-1 text-sm text-white/45">
-          <span className="font-semibold text-emerald-400">{action.actor}</span>{" "}
-          alterou <span className="font-semibold text-white/70">{action.target}</span>
-        </p>
-
-        <p className="mt-2 text-sm leading-relaxed text-white/45">{action.description}</p>
-      </div>
     </div>
   );
 }
