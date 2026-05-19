@@ -116,6 +116,7 @@ export async function updateUserProfile(
 export async function registerUser(data: {
   name: string;
   username: string;
+  gender: string;
   email: string;
   password: string;
   birthDate: string;
@@ -157,6 +158,7 @@ export async function registerUser(data: {
       username: data.username,
       name: data.name,
       birthDate: new Date(data.birthDate),
+      gender: data.gender,
       email: data.email,
       passwordHash,
       loginMethod: "local",

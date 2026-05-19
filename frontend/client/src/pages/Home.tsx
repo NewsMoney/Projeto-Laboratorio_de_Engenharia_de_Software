@@ -31,7 +31,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
   
-  // Utilizando o seu hook de detecção de mobile
+  // hook de detecção de mobile
   const isMobile = useIsMobile();
 
   // Busca de dados via tRPC

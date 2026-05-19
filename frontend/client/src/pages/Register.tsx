@@ -46,7 +46,7 @@ export default function Register() {
    * Monta a data de nascimento a partir dos campos separados.
    * Em caso de sucesso, invalida o cache e redireciona para a home.
    */
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
 
     /* Monta a data de nascimento no formato ISO (YYYY-MM-DD) */
@@ -60,6 +60,7 @@ export default function Register() {
         name,
         username,
         email,
+        gender,
         password,
         birthDate: birthDate as string,
       });

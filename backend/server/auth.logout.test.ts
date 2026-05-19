@@ -18,6 +18,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
    username: "testuser",
    name: "Test User",
    birthDate: new Date("2000-01-01"),
+   gender: "Masculino",
    email: "test@example.com",
    passwordHash: "hashed-password",
    loginMethod: "google",

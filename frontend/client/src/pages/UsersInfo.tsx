@@ -86,6 +86,7 @@ export default function Usuarios() {
       name: "",
       username: "",
       email: "",
+      gender: "",
       password: "",
 
       role: "admin" as
@@ -135,6 +136,9 @@ export default function Usuarios() {
 
           username:
             newUser.username,
+          
+          gender:
+            newUser.gender,
 
           email:
             newUser.email,
@@ -158,6 +162,7 @@ export default function Usuarios() {
         name: "",
         username: "",
         email: "",
+        gender: "",
         password: "",
         role: "admin",
       });

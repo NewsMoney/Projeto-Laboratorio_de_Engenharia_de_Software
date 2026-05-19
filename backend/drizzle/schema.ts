@@ -58,6 +58,7 @@ export const users = mysqlTable("users", {
 	id: int().autoincrement().notNull(),
 	name: varchar({ length: 120 }).notNull(),
 	email: varchar({ length: 320 }).notNull(),
+	gender: varchar({ length: 10 }).notNull(),
 	passwordHash: varchar({ length: 255 }).notNull(),
 	loginMethod: varchar({ length: 64 }).default('local'),
 	role: mysqlEnum(['user','moderator','admin']).default('user').notNull(),

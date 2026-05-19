@@ -21,20 +21,21 @@ function createPublicContext(): TrpcContext {
 function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] } {
   const clearedCookies: CookieCall[] = [];
 
- const user: AuthenticatedUser = {
-    id: 1,
-    username: "testuser",
-    name: "Test User",
-    birthDate: new Date("2000-01-01"),
-    email: "test@example.com",
-    passwordHash: "hashed-password",
-    loginMethod: "google",
-    bio: null,
-    avatarUrl: null,
-    role: "user",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
+  const user: AuthenticatedUser = {
+   id: 1,
+   username: "testuser",
+   name: "Test User",
+   birthDate: new Date("2000-01-01"),
+   gender: "Masculino",
+   email: "test@example.com",
+   passwordHash: "hashed-password",
+   loginMethod: "google",
+   bio: null,
+   avatarUrl: null,
+   role: "user",
+   createdAt: new Date(),
+   updatedAt: new Date(),
+   lastSignedIn: new Date(),
   };
 
   const ctx: TrpcContext = {

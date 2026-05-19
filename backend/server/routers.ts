@@ -40,6 +40,7 @@ export const appRouter = router({
           name: z.string().min(2),
           username: z.string().min(3).max(30),
           email: z.string(),
+          gender: z.string(),
           password: z.string().min(4),
           birthDate: z.string(),
         })
@@ -49,6 +50,7 @@ export const appRouter = router({
           name: input.name,
           username: input.username,
           email: input.email,
+          gender: input.gender,
           password: input.password,
           birthDate: input.birthDate,
         });

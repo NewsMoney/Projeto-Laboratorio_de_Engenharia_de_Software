@@ -39,6 +39,8 @@ export const usersRouter = router({
 
             role: users.role,
 
+            gender: users.gender,
+
             createdAt:
               users.createdAt,
 
