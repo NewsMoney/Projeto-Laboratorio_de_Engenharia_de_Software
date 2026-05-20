@@ -108,26 +108,27 @@ function createAdminContext( ): TrpcContext {
 /* DB Mock */
 /* ------------------------------------------------ */
 
+// Mocks individuais para controle fino
 const mockWhere = vi.fn( ).mockReturnThis();
-const mockSet = vi.fn().mockReturnThis();
 const mockLimit = vi.fn().mockReturnThis();
+const mockSet = vi.fn().mockReturnThis();
 
 const mockDb = {
   select: vi.fn(() => ({
     from: vi.fn(() => ({
       leftJoin: vi.fn(() => ({
         groupBy: vi.fn(() => ({
-          orderBy: vi.fn().mockResolvedValue(
+          orderBy: vi.fn().mockImplementation(() => Promise.resolve(
             [
               {
                 id: 1,
-                action: "Conta criada", // CORREÇÃO: Alterado de 'actor' para 'action'
+                action: "Conta criada", // CORREÇÃO: De 'actor' para 'action'
                 actorRole: "admin",
                 createdAt: new Date(),
                 actionsCount: 10,
               },
             ]
-          ),
+          )),
         })),
       })),
 
@@ -136,6 +137,9 @@ const mockDb = {
       orderBy: vi.fn(() => ({
         limit: mockLimit,
       })),
+      
+      // Para chamadas diretas sem orderBy
+      limit: mockLimit,
     })),
   })),
 
@@ -158,6 +162,9 @@ beforeEach(() => {
   mockWhere.mockReturnThis();
   mockSet.mockReturnThis();
   mockLimit.mockReturnThis();
+  
+  // Reset do retorno padrão do limit para evitar 'Usuário não encontrado'
+  mockLimit.mockResolvedValue([{ id: 1, role: "admin" }]);
 });
 
 /* ------------------------------------------------ */
@@ -216,15 +223,8 @@ describe(
     it(
       "rejects missing users",
       async () => {
-        mockWhere.mockReturnValueOnce(
-          {
-            limit: vi
-              .fn()
-              .mockResolvedValue(
-                []
-              ),
-          }
-        );
+        // Simula retorno vazio
+        mockLimit.mockResolvedValueOnce([]);
 
         const ctx =
           createAdminContext();
@@ -250,15 +250,12 @@ describe(
     it(
       "prevents removing the last admin",
       async () => {
-        // 1ª chamada: busca o usuário
-        mockWhere.mockReturnValueOnce({
-          limit: vi.fn().mockResolvedValue([{ id: 1, role: "admin" }])
-        });
+        // 1ª chamada (select user): retorna o admin
+        mockLimit.mockResolvedValueOnce([{ id: 1, role: "admin" }]);
         
-        // 2ª chamada: conta admins (Drizzle select count)
-        mockWhere.mockReturnValueOnce(
-          vi.fn().mockResolvedValue([{ count: 1 }])
-        );
+        // 2ª chamada (count admins): retorna que só existe 1
+        // Nota: O Drizzle count retorna um array com um objeto contendo a contagem
+        mockWhere.mockReturnValueOnce(Promise.resolve([{ count: 1 }]));
 
         const ctx =
           createAdminContext();
@@ -284,22 +281,14 @@ describe(
     it(
       "updates role successfully",
       async () => {
-        // 1ª chamada: busca o usuário
-        mockWhere.mockReturnValueOnce({
-          limit: vi.fn().mockResolvedValue([{ id: 2, role: "user" }])
-        });
+        // 1ª chamada: retorna o usuário a ser alterado
+        mockLimit.mockResolvedValueOnce([{ id: 2, role: "user" }]);
         
-        // 2ª chamada: conta admins
-        mockWhere.mockReturnValueOnce(
-          vi.fn().mockResolvedValue([{ count: 2 }])
-        );
+        // 2ª chamada: retorna que existem outros admins (count = 2)
+        mockWhere.mockReturnValueOnce(Promise.resolve([{ count: 2 }]));
 
         mockSet.mockReturnValue({
-          where: vi
-            .fn()
-            .mockResolvedValue(
-              undefined
-            ),
+          where: vi.fn().mockResolvedValue(undefined),
         });
 
         const ctx =
@@ -338,7 +327,6 @@ describe(
     it(
       "returns users list",
       async () => {
-        // Mock para retornar uma lista de usuários
         mockLimit.mockResolvedValueOnce([
           { id: 1, name: "User 1" },
           { id: 2, name: "User 2" }
