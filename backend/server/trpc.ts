@@ -2,14 +2,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { Request, Response } from "express";
 
-/**
- * Context type definition for tRPC.
- * Includes Express request/response and the authenticated user.
- */
 export type Context = {
   req: Request;
   res: Response;
-  user: any | null; // Replace 'any' with your User type if available
+  user: any | null; 
 };
 
 const t = initTRPC.context<Context>().create({
@@ -17,15 +13,10 @@ const t = initTRPC.context<Context>().create({
 });
 
 export const router = t.router;
-
-/**
- * Public procedure that anyone can access.
- */
 export const publicProcedure = t.procedure;
 
 /**
- * Protected procedure that requires authentication.
- * Throws UNAUTHORIZED if no user is present in context.
+ * Requer apenas autenticação (qualquer usuário logado)
  */
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
@@ -34,12 +25,36 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
       message: "Não autenticado",
     });
   }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
 
-  // Narrowing the context to ensure 'user' is non-nullable in protected procedures
-  return next({
-    ctx: {
-      ...ctx,
-      user: ctx.user,
-    },
-  });
+/**
+ * Requer ser Moderador OU Administrador
+ * Bloqueia usuários comuns ('user')
+ */
+export const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
+  const role = ctx.user.role;
+  
+  if (role !== "admin" && role !== "moderator") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Acesso negado: Requer nível de Moderador ou superior",
+    });
+  }
+
+  return next({ ctx });
+});
+
+/**
+ * Requer ser estritamente Administrador
+ */
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Acesso negado: Requer nível de Administrador",
+    });
+  }
+
+  return next({ ctx });
 });

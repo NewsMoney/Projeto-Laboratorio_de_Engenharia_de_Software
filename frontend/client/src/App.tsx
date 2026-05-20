@@ -25,7 +25,7 @@ import Login from "./pages/Login";
 import register from "./pages/Register";
 import AdminPage from "./pages/AdminPage"
 import ReportsPage from "./pages/ReportsPage"
-import CreatePartyOrPlace from "./pages/CreatyParty";
+import CreatePartyOrPlace from "./pages/CreateParty";
 import Usuarios from "./pages/UsersInfo";
 
 /**
