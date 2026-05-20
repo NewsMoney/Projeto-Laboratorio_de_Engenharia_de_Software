@@ -1,3 +1,5 @@
+import { Request } from "express";
+
 export function getSessionCookieOptions(req: Request) {
   return {
     secure: false, 
