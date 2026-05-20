@@ -158,6 +158,30 @@ function buildFullAddress(address: AddressFields) {
   return [streetAndNumber, address.neighborhood.trim(), address.city.trim(), address.zipCode.trim()].filter(Boolean).join(" - ");
 }
 
+async function uploadImage(file: File): Promise<string> {
+  const API_KEY = 'SUA_API_KEY_AQUI'; // Obtenha em https://api.imgbb.com/
+  const formData = new FormData( );
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+      method: 'POST',
+      body: formData,
+    } );
+
+    const data = await response.json();
+
+    if (data.success) {
+      return data.data.url;
+    } else {
+      throw new Error(data.error.message || 'Erro no upload');
+    }
+  } catch (error) {
+    console.error('Erro ao fazer upload da imagem:', error);
+    throw error;
+  }
+}
+
 /* ================================================== */
 /* PÁGINA PRINCIPAL */
 /* ================================================== */
@@ -264,10 +288,36 @@ export default function CreatePartyOrPlace() {
 
   async function handlePublish() {
     try {
-      const payload = { type: mode, name: form.name, address: form.address || fullAddress, lat: (form.lat ?? 0).toString(), lng: (form.lng ?? 0).toString(), category: mode === "party" ? form.genre || "party" : form.category, description: form.description, imageUrl: form.imageUrl };
+      let finalImageUrl = form.imageUrl;
+
+      // Se o usuário selecionou um arquivo, fazemos o upload primeiro
+      if (coverFile) {
+        // Opcional: Adicione um estado de "isUploading" para mostrar um loading no botão
+        finalImageUrl = await uploadImage(coverFile);
+      }
+
+      // Se ainda estiver vazio (não selecionou arquivo nem colou URL), define um padrão
+      if (!finalImageUrl) {
+        finalImageUrl = "https://placehold.co/600x400?text=Sem+Imagem";
+      }
+
+      const payload = { 
+        type: mode, 
+        name: form.name, 
+        address: form.address || fullAddress, 
+        lat: (form.lat ?? 0 ).toString(), 
+        lng: (form.lng ?? 0).toString(), 
+        category: mode === "party" ? form.genre || "party" : form.category, 
+        description: form.description, 
+        imageUrl: finalImageUrl // Agora enviamos a URL real
+      };
+
       await createPlace.mutateAsync(payload);
       setLocation("/admin");
-    } catch (error) { console.error("ERRO:", error); }
+    } catch (error) { 
+      console.error("ERRO AO PUBLICAR:", error);
+      alert("Erro ao salvar: " + (error instanceof Error ? error.message : "Verifique os dados"));
+    }
   }
 
   function handleSaveDraft() { console.log("Salvar rascunho", { mode, form, openingHours, coverFile }); }
