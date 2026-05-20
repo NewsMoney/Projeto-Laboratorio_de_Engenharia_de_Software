@@ -37,10 +37,10 @@ export const appRouter = router({
     register: publicProcedure
       .input(
         z.object({
-          name: z.string().min(2),
-          username: z.string().min(3).max(30),
-          email: z.string(),
-          gender: z.string(),
+          name: z.string().trim().min(2),
+          username: z.string().trim().min(3).max(30),
+          email: z.string().trim().email(),
+          gender: z.string().trim(),
           password: z.string().min(4),
           birthDate: z.string(),
         })
@@ -109,11 +109,11 @@ export const appRouter = router({
     }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions =
+        getSessionCookieOptions(ctx.req);
+
       ctx.res.clearCookie(COOKIE_NAME, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false, // localhost
+        ...cookieOptions,
         expires: new Date(0),
       });
 
@@ -139,7 +139,7 @@ export const appRouter = router({
       }),
 
     search: publicProcedure
-      .input(z.object({ query: z.string().min(1) }))
+      .input(z.object({ query: z.string().trim().min(1) }))
       .query(async ({ input }) => {
         return searchPlaces(input.query);
       }),
@@ -163,9 +163,9 @@ export const appRouter = router({
           address: z.string().min(1).max(500),
           lat: z.string(),
           lng: z.string(),
-          category: z.string().max(100).optional(),
-          description: z.string().optional(),
-          imageUrl: z.string().optional(),
+          category: z.string().trim().max(100).optional(),
+          description: z.string().trim().optional(),
+          imageUrl: z.string().url().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -182,7 +182,7 @@ export const appRouter = router({
         z.object({
           placeId: z.number(),
           rating: z.number().min(1).max(5),
-          comment: z.string().optional(),
+          comment: z.string().trim().optional(),
           occupancy: z.enum(["empty", "moderate", "full"]).optional(),
         })
       )
@@ -240,7 +240,7 @@ export const appRouter = router({
     updateProfile: protectedProcedure
       .input(
         z.object({
-          bio: z.string(),
+          bio: z.string().trim(),
           avatarUrl: z.string().nullable(),
         })
       )

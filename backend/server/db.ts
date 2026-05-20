@@ -13,6 +13,24 @@ import {
 import bcrypt from "bcryptjs";
 
 /* ------------------------------------------------ */
+/* Helpers */
+/* ------------------------------------------------ */
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function validateDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid birth date");
+  }
+
+  return date;
+}
+
+/* ------------------------------------------------ */
 /* DB Connection */
 /* ------------------------------------------------ */
 
@@ -46,7 +64,7 @@ export async function getUserById(id: number) {
     .where(eq(users.id, id))
     .limit(1);
 
-  return result[0];
+  return result?.[0];
 }
 
 export async function getUserByEmail(email: string) {
@@ -57,10 +75,10 @@ export async function getUserByEmail(email: string) {
   const result = await db
     .select()
     .from(users)
-    .where(eq(users.email, email))
+    .where(eq(users.email, normalizeEmail(email)))
     .limit(1);
 
-  return result[0];
+  return result?.[0];
 }
 
 export async function upsertUser(user: InsertUser) {
@@ -130,7 +148,7 @@ export async function registerUser(data: {
   const emailExists = await db
     .select()
     .from(users)
-    .where(eq(users.email, data.email))
+    .where(eq(users.email, normalizeEmail(data.email)))
     .limit(1);
 
   if (emailExists.length > 0) {
@@ -157,9 +175,9 @@ export async function registerUser(data: {
     .values({
       username: data.username,
       name: data.name,
-      birthDate: new Date(data.birthDate),
+      birthDate: validateDate(data.birthDate),
       gender: data.gender,
-      email: data.email,
+      email: normalizeEmail(data.email),
       passwordHash,
       loginMethod: "local",
       role: "user",
@@ -167,6 +185,10 @@ export async function registerUser(data: {
       avatarUrl: null,
       lastSignedIn: new Date(),
     });
+
+  if (!result?.[0]?.insertId) {
+    throw new Error("Failed to create user");
+  }
 
   return {
     id: result[0].insertId,
@@ -190,7 +212,7 @@ export async function loginUser(data: {
     result = await db
       .select()
       .from(users)
-      .where(eq(users.email, data.email))
+      .where(eq(users.email, normalizeEmail(data.email)))
       .limit(1);
 
   } else if (data.username) {
@@ -206,7 +228,7 @@ export async function loginUser(data: {
     );
   }
 
-  const user = result[0];
+  const user = result?.[0];
 
   if (!user || !user.passwordHash) {
     throw new Error("Usuário inválido");
@@ -249,6 +271,10 @@ export async function createPlace(
     .insert(places)
     .values(place);
 
+  if (!result?.[0]?.insertId) {
+    throw new Error("Failed to create user");
+  }
+
   return {
     id: result[0].insertId,
   };
@@ -265,7 +291,7 @@ export async function getPlaceById(id: number) {
     .where(eq(places.id, id))
     .limit(1);
 
-  return result[0];
+  return result?.[0];
 }
 
 export async function listPlaces(
@@ -420,6 +446,10 @@ export async function createCheckin(
     .insert(checkins)
     .values(checkin);
 
+  if (!result?.[0]?.insertId) {
+    throw new Error("Failed to create user");
+  }
+
   return {
     id: result[0].insertId,
   };
@@ -547,7 +577,11 @@ export async function getUserStats(
       )
     );
 
-  return result[0];
+  return {
+    totalCheckins: result?.[0]?.totalCheckins ?? 0,
+    uniquePlaces: result?.[0]?.uniquePlaces ?? 0,
+    avgRating: Number(result?.[0]?.avgRating ?? 0),
+  };
 }
 
 export async function getTopUsers(
@@ -616,5 +650,8 @@ export async function getPlaceStats(
       )
     );
 
-  return result[0];
+  return {
+    totalCheckins: result?.[0]?.totalCheckins ?? 0,
+    avgRating: Number(result?.[0]?.avgRating ?? 0),
+  };
 }

@@ -9,8 +9,7 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 
 import { appRouter } from "./routers";
-import { COOKIE_NAME } from "@shared/const";
-import { getUserById } from "./db";
+import { createContext } from "./context";
 
 const app = express();
 const server = createServer(app);
@@ -30,28 +29,14 @@ app.use(
   "/api/trpc",
   createExpressMiddleware({
     router: appRouter,
-
-    createContext: async ({ req, res }) => {
-      const sessionId = req.cookies?.[COOKIE_NAME];
-
-      let user = null;
-
-      if (sessionId) {
-        const userId = Number(sessionId);
-
-        if (!Number.isNaN(userId)) {
-          user = await getUserById(userId);
-        }
-      }
-
-      return {
-        req,
-        res,
-        user,
-      };
-    },
+    createContext,
   })
 );
+
+/* Health Check */
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 const port = parseInt(process.env.PORT || "3000");
 

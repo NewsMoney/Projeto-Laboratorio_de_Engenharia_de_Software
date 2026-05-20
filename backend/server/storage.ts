@@ -15,37 +15,76 @@ function getStorageConfig(): StorageConfig {
     );
   }
 
+  try {
+    new URL(baseUrl);
+  } catch {
+    throw new Error(
+      "Invalid BUILT_IN_FORGE_API_URL"
+    );
+  }
+
   return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
 }
 
-function buildUploadUrl(baseUrl: string, relKey: string): URL {
+
+export function buildUploadUrl(baseUrl: string, relKey: string): URL {
   const url = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
   url.searchParams.set("path", normalizeKey(relKey));
   return url;
 }
 
-async function buildDownloadUrl(
+export async function buildDownloadUrl(
   baseUrl: string,
   relKey: string,
   apiKey: string
-): Promise<string> {
-  const downloadApiUrl = new URL(
-    "v1/storage/downloadUrl",
-    ensureTrailingSlash(baseUrl)
+) {
+  const downloadApiUrl =
+    new URL(
+      "v1/storage/downloadUrl",
+      ensureTrailingSlash(baseUrl)
+    );
+
+  downloadApiUrl.searchParams.set(
+    "path",
+    normalizeKey(relKey)
   );
-  downloadApiUrl.searchParams.set("path", normalizeKey(relKey));
-  const response = await fetch(downloadApiUrl, {
-    method: "GET",
-    headers: buildAuthHeaders(apiKey),
-  });
-  return (await response.json()).url;
+
+  const response =
+    await fetch(
+      downloadApiUrl,
+      {
+        method: "GET",
+
+        headers:
+          buildAuthHeaders(
+            apiKey
+          ),
+      }
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      `Storage download URL failed (${response.status})`
+    );
+  }
+
+  const json =
+    await response.json();
+
+  if (!json?.url) {
+    throw new Error(
+      "Storage response missing url field"
+    );
+  }
+
+  return json.url;
 }
 
-function ensureTrailingSlash(value: string): string {
+export function ensureTrailingSlash(value: string): string {
   return value.endsWith("/") ? value : `${value}/`;
 }
 
-function normalizeKey(relKey: string): string {
+export function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
@@ -63,8 +102,13 @@ function toFormData(
   return form;
 }
 
-function buildAuthHeaders(apiKey: string): HeadersInit {
-  return { Authorization: `Bearer ${apiKey}` };
+export function buildAuthHeaders(
+  apiKey: string
+) {
+  return {
+    Authorization:
+      `Bearer ${apiKey}`,
+  };
 }
 
 export async function storagePut(
@@ -83,12 +127,20 @@ export async function storagePut(
   });
 
   if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
     throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
+      `Storage upload failed (${response.status})`
     );
   }
-  const url = (await response.json()).url;
+
+  const json = await response.json();
+
+  if (!json?.url) {
+    throw new Error(
+      "Storage response missing url field"
+    );
+  }
+
+  const url = json.url;
   return { key, url };
 }
 
@@ -100,3 +152,4 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
     url: await buildDownloadUrl(baseUrl, key, apiKey),
   };
 }
+

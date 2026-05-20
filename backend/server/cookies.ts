@@ -1,14 +1,21 @@
+import type { CookieOptions, Request } from "express";
+
 /**
- * Cookie configuration stub.
- * Implement your session cookie options here.
+ * Centralized session cookie options for JoinMe.
+ * Handles security (HTTPS), sameSite policy, and expiration.
  */
-export function getSessionCookieOptions(req: any) {
+export function getSessionCookieOptions(req: Request): CookieOptions {
   const isSecure = req.protocol === "https";
+  
+  // 1 year in milliseconds
+  const ONE_YEAR_MS = 1000 * 60 * 60 * 24 * 365;
+
   return {
     httpOnly: true,
     secure: isSecure,
-    sameSite: isSecure ? ("none" as const) : ("lax" as const),
+    // Use "none" for cross-site cookies on HTTPS, otherwise "lax"
+    sameSite: isSecure ? "none" : "lax",
     path: "/",
-    maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
+    maxAge: ONE_YEAR_MS,
   };
 }

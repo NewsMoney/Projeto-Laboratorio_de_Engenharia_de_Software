@@ -3,7 +3,7 @@
     "server/**/*",
     "shared/**/*",
     "drizzle/**/*"
-  ],
+, "tests/routers/auth.test.ts", "tests/routers/users.test.ts"  ],
 
   "exclude": [
     "node_modules",

@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "./trpc";
+import { router, publicProcedure, protectedProcedure } from "./trpc";
 
 import { z } from "zod";
 
@@ -18,6 +18,9 @@ import {
 export const usersRouter = router({
   /**
    * Buscar usuários
+   *
+   * Endpoint público utilizado pelo painel administrativo.
+   * Retorna usuários com quantidade de ações/check-ins.
    */
   getAll: publicProcedure.query(
     async () => {
@@ -68,8 +71,12 @@ export const usersRouter = router({
           );
 
         return data;
+
       } catch (error) {
-        console.error(error);
+        console.error(
+          "[users.getAll]",
+          error
+        );
 
         return [];
       }
@@ -77,9 +84,14 @@ export const usersRouter = router({
   ),
 
   /**
-   * Alterar role
+   * Alterar role do usuário
+   *
+   * Regras:
+   * - Apenas admins podem alterar roles
+   * - Não permite remover o último admin do sistema
+   * - Mantém compatibilidade com o frontend atual
    */
-  updateRole: publicProcedure
+  updateRole: protectedProcedure
     .input(
       z.object({
         userId: z.number(),
@@ -92,7 +104,7 @@ export const usersRouter = router({
       })
     )
     .mutation(
-      async ({ input }) => {
+      async ({ ctx, input }) => {
         const db =
           await getDb();
 
@@ -102,6 +114,85 @@ export const usersRouter = router({
           );
         }
 
+        /**
+         * Verifica permissão administrativa
+         */
+        if (
+          ctx.user.role !==
+          "admin"
+        ) {
+          throw new Error(
+            "Apenas administradores podem alterar roles"
+          );
+        }
+
+        /**
+         * Busca usuário alvo
+         */
+        const targetUser =
+          await db
+            .select({
+              id: users.id,
+              role: users.role,
+            })
+            .from(users)
+            .where(
+              eq(
+                users.id,
+                input.userId
+              )
+            )
+            .limit(1);
+
+        const foundUser =
+          targetUser[0];
+
+        if (!foundUser) {
+          throw new Error(
+            "Usuário não encontrado"
+          );
+        }
+
+        /**
+         * Impede remover o último admin
+         */
+        if (
+          foundUser.role ===
+            "admin" &&
+          input.role !== "admin"
+        ) {
+          const admins =
+            await db
+              .select({
+                count:
+                  count(),
+              })
+              .from(users)
+              .where(
+                eq(
+                  users.role,
+                  "admin"
+                )
+              );
+
+          const totalAdmins =
+            Number(
+              admins[0]?.count ??
+                0
+            );
+
+          if (
+            totalAdmins <= 1
+          ) {
+            throw new Error(
+              "Não é possível remover o último administrador"
+            );
+          }
+        }
+
+        /**
+         * Atualiza role
+         */
         await db
           .update(users)
           .set({
@@ -124,7 +215,7 @@ export const usersRouter = router({
     ),
 
   /**
-   * Timeline
+   * Timeline administrativa
    */
   timeline: publicProcedure.query(
     async () => {
@@ -188,8 +279,12 @@ export const usersRouter = router({
                 : "info",
           })
         );
+
       } catch (error) {
-        console.error(error);
+        console.error(
+          "[users.timeline]",
+          error
+        );
 
         return [];
       }
