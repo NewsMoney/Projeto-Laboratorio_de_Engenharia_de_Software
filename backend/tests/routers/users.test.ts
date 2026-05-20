@@ -18,15 +18,15 @@ const dbMock: any = {
   then: vi.fn(),
 };
 
-vi.mock("../../server/db", () => ({
-  getDb: vi.fn(async () => dbMock),
+vi.doMock("../../server/db", () => ({
+  getDb: async () => dbMock,
 }));
 
 /* ------------------------------------------------ */
-/* IMPORTS APÓS MOCK */
+/* IMPORT DINÂMICO */
 /* ------------------------------------------------ */
 
-import { appRouter } from "../../server/routers";
+const { appRouter } = await import("../../server/routers");
 
 /* ------------------------------------------------ */
 /* Helpers */
