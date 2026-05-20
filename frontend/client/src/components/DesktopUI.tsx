@@ -222,8 +222,9 @@ function SidebarNav({
   const { user } = useAuth();
 
   // Verifica se o usuário atual tem a função de administrador.
-  const isAdmin =
-    user?.role?.toLowerCase() === "admin";
+  const role = user?.role?.toLowerCase();
+  
+  const isAdmin = role === "admin" || role === "moderator";
 
   // Seleciona o array de itens de navegação apropriado (admin ou padrão).
   const navItems = isAdmin

@@ -77,7 +77,9 @@ export function BottomNav() {
   const { user } = useAuth();
 
   // Determina se o usuário atual é um administrador.
-  const isAdmin = user?.role === "admin";
+  const role = user?.role?.toLowerCase();
+  
+  const isAdmin = role === "admin" || role === "moderator";
 
   // Seleciona o conjunto de itens de navegação com base no perfil do usuário.
   const navItems = isAdmin

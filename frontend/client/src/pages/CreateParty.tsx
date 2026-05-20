@@ -489,7 +489,7 @@ function OpeningHoursEditor({ openingHours, onChange }: any) {
   );
 }
 
-function LocationEditor({ addressFields, fullAddress, confirmedLocation, previewPlace, mapCenter, onAddressFieldChange, onConfirm }: any) {
+function LocationEditor({ addressFields, previewPlace, mapCenter, onAddressFieldChange, onConfirm }: any) {
   return (
     <div className="space-y-4">
       <Field label="Endereço da festa/local" icon={<MapPin size={21} />}>
