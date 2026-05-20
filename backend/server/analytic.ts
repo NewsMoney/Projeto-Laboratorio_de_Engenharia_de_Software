@@ -24,7 +24,7 @@ function buildDateConditions(
   endDate?: string,
   dateField?: any
 ) {
-  const conditions: any[] = []; // Alteração 1: Tipar conditions
+  const conditions: any[] = []; 
   if (startDate && dateField) {
     conditions.push(gte(dateField, new Date(startDate)));
   }
@@ -55,7 +55,7 @@ export const analyticsRouter = router({
           totalCheckins: 0,
           totalPlaces: 0,
           activeUsers: 0,
-          avgRating: "0",
+          avgRating: "0.0", // CORREÇÃO: De "0" para "0.0"
         };
       }
 
@@ -103,7 +103,6 @@ export const analyticsRouter = router({
           })
           .from(checkins);
 
-        // Alteração 2 e 3: Usar optional chaining e helper formatRating
         return {
           totalUsers: Number(totalUsersResult?.[0]?.count ?? 0),
           totalCheckins: Number(totalCheckinsResult?.[0]?.count ?? 0),
@@ -118,7 +117,7 @@ export const analyticsRouter = router({
           totalCheckins: 0,
           totalPlaces: 0,
           activeUsers: 0,
-          avgRating: "0",
+          avgRating: "0.0", // CORREÇÃO: De "0" para "0.0"
         };
       }
     }),
@@ -166,7 +165,6 @@ export const analyticsRouter = router({
               .groupBy(sql`DATE(${checkins.createdAt})`)
               .orderBy(sql`DATE(${checkins.createdAt})`);
 
-        // Alteração 5: Proteger Math.max com Number()
         const counts = data.map((d) => Number(d.count));
         const maxCount = Math.max(...counts, 1);
 
@@ -174,7 +172,6 @@ export const analyticsRouter = router({
           const dateStr = item.date;
           const dateObj = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
           
-          // Alteração 4: Number(...) nos counts
           const itemCount = Number(item.count);
           return {
             label: dateObj.toLocaleDateString("pt-BR", {
@@ -242,11 +239,9 @@ export const analyticsRouter = router({
               .orderBy(desc(count()))
               .limit(limit);
 
-        // Alteração 4: Number(...) nos counts
         const totalCheckins = data.reduce((sum, d) => sum + Number(d.checkinsCount), 0);
 
         return data.map((item) => {
-          // Alteração 3: Usar helper formatRating
           const checkinsCount = Number(item.checkinsCount);
           return {
             id: item.placeId,
@@ -302,7 +297,6 @@ export const analyticsRouter = router({
               .from(checkins)
               .groupBy(checkins.occupancy);
 
-        // Alteração 4: Number(...) nos counts
         const total = data.reduce((sum, d) => sum + Number(d.count), 0);
 
         return data.map((item) => ({
@@ -370,12 +364,11 @@ export const analyticsRouter = router({
               .limit(limit);
 
         return data.map((item) => {
-          // Alteração 3: Usar helper formatRating
           return {
             id: item.placeId,
             name: item.placeName,
             avgRating: formatRating(item.avgRating),
-            checkinsCount: Number(item.checkinsCount), // Alteração 4: Number(...) nos counts
+            checkinsCount: Number(item.checkinsCount),
           };
         });
       } catch (error) {
@@ -436,11 +429,10 @@ export const analyticsRouter = router({
               .limit(limit);
 
         return data.map((item) => {
-          // Alteração 3: Usar helper formatRating
           return {
             id: item.userId,
             name: item.userName,
-            checkins: Number(item.checkinsCount), // Alteração 4: Number(...) nos counts
+            checkins: Number(item.checkinsCount),
             avgRating: formatRating(item.avgRating),
           };
         });
@@ -492,7 +484,6 @@ export const analyticsRouter = router({
               .groupBy(checkins.rating)
               .orderBy(checkins.rating);
 
-        // Alteração 4: Number(...) nos counts
         const total = data.reduce((sum, d) => sum + Number(d.count), 0);
 
         return data.map((item) => ({
@@ -557,7 +548,7 @@ export const analyticsRouter = router({
               month: "2-digit",
               day: "2-digit",
             }),
-            newUsers: Number(item.count), // Alteração 4: Number(...) nos counts
+            newUsers: Number(item.count),
           };
         });
       } catch (error) {
