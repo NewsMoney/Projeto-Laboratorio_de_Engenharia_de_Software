@@ -32,19 +32,20 @@ describe(
   "getSessionCookieOptions",
   () => {
     it(
-      "returns secure cookies on HTTPS",
+      "returns non-secure cookies even on HTTPS (AWS compatibility)",
       () => {
         const result =
           getSessionCookieOptions(
             createRequest(true)
           );
 
+        // Alterado para esperar false, acompanhando a mudança no código
         expect(
           result.secure
-        ).toBe(true);
+        ).toBe(false);
       }
     );
-
+    
     it(
       "returns non-secure cookies on HTTP",
       () => {
