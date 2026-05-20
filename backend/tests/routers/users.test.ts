@@ -47,7 +47,7 @@ const dbMock: any = {
   then: vi.fn(),
 };
 
-vi.mock("./db", () => ({
+vi.mock("../../server/db", () => ({
   getDb: vi.fn(async () => dbMock),
 }));
 
