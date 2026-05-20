@@ -45,6 +45,10 @@ jobs:
   backend:
     name: Backend - Test & Build
     runs-on: ubuntu-latest
+    
+    # Variável de ambiente global para o job de backend
+    env:
+      DATABASE_URL: mysql://appuser:senha123@127.0.0.1:3306/joinme
 
     services:
       mysql:
@@ -79,18 +83,17 @@ jobs:
           cache: pnpm
           cache-dependency-path: backend/pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Wait for MySQL
-        run: |
-          until mysqladmin ping -h "127.0.0.1" -uappuser -psenha123 --silent; do
-            sleep 2
-          done
+      - name: Migrate Database (Drizzle)
+        run: pnpm db:push
 
-      - name: Setup env
-        run: echo "DATABASE_URL=mysql://appuser:senha123@127.0.0.1:3306/joinme" >> .env
+      - name: Type check
+        run: pnpm check
 
-      - run: pnpm db:push
-      - run: pnpm check
-      - run: pnpm test
-      - run: pnpm build
+      - name: Run Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
