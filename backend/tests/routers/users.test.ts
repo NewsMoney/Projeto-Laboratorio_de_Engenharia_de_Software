@@ -34,7 +34,7 @@ function createPublicContext(): TrpcContext {
   };
 }
 
-function createUserContext(): TrpcContext {
+function createUserContext( ): TrpcContext {
   const user: AuthenticatedUser =
     {
       id: 2,
@@ -69,12 +69,12 @@ function createUserContext(): TrpcContext {
   };
 }
 
-function createAdminContext(): TrpcContext {
+function createAdminContext( ): TrpcContext {
   const user: AuthenticatedUser =
     {
       id: 1,
-      username: "admin",
-      name: "Admin",
+      username: "milton", // CORREÇÃO: Alterado de 'admin' para 'milton' para bater com o teste de hidratação
+      name: "Admin User",
       birthDate: new Date(
         "1999-01-01"
       ),
@@ -108,9 +108,9 @@ function createAdminContext(): TrpcContext {
 /* DB Mock */
 /* ------------------------------------------------ */
 
-const mockWhere = vi.fn();
-const mockLimit = vi.fn();
-const mockSet = vi.fn();
+const mockWhere = vi.fn( ).mockReturnThis();
+const mockSet = vi.fn().mockReturnThis();
+const mockLimit = vi.fn().mockReturnThis();
 
 const mockDb = {
   select: vi.fn(() => ({
@@ -121,12 +121,9 @@ const mockDb = {
             [
               {
                 id: 1,
-                actor:
-                  "Admin",
-                actorRole:
-                  "admin",
-                createdAt:
-                  new Date(),
+                action: "Conta criada", // CORREÇÃO: Alterado de 'actor' para 'action'
+                actorRole: "admin",
+                createdAt: new Date(),
                 actionsCount: 10,
               },
             ]
@@ -137,20 +134,7 @@ const mockDb = {
       where: mockWhere,
 
       orderBy: vi.fn(() => ({
-        limit:
-          vi.fn().mockResolvedValue(
-            [
-              {
-                id: 1,
-                actor:
-                  "Admin",
-                actorRole:
-                  "admin",
-                createdAt:
-                  new Date(),
-              },
-            ]
-          ),
+        limit: mockLimit,
       })),
     })),
   })),
@@ -170,6 +154,10 @@ vi.mock("./db", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Reset padrão para os mocks encadeados
+  mockWhere.mockReturnThis();
+  mockSet.mockReturnThis();
+  mockLimit.mockReturnThis();
 });
 
 /* ------------------------------------------------ */
@@ -262,31 +250,15 @@ describe(
     it(
       "prevents removing the last admin",
       async () => {
-        mockWhere
-          .mockReturnValueOnce({
-            limit: vi
-              .fn()
-              .mockResolvedValue(
-                [
-                  {
-                    id: 1,
-                    role:
-                      "admin",
-                  },
-                ]
-              ),
-          })
-
-          .mockReturnValueOnce(
-            vi.fn()
-              .mockResolvedValue(
-                [
-                  {
-                    count: 1,
-                  },
-                ]
-              )
-          );
+        // 1ª chamada: busca o usuário
+        mockWhere.mockReturnValueOnce({
+          limit: vi.fn().mockResolvedValue([{ id: 1, role: "admin" }])
+        });
+        
+        // 2ª chamada: conta admins (Drizzle select count)
+        mockWhere.mockReturnValueOnce(
+          vi.fn().mockResolvedValue([{ count: 1 }])
+        );
 
         const ctx =
           createAdminContext();
@@ -312,31 +284,15 @@ describe(
     it(
       "updates role successfully",
       async () => {
-        mockWhere
-          .mockReturnValueOnce({
-            limit: vi
-              .fn()
-              .mockResolvedValue(
-                [
-                  {
-                    id: 2,
-                    role:
-                      "user",
-                  },
-                ]
-              ),
-          })
-
-          .mockReturnValueOnce(
-            vi.fn()
-              .mockResolvedValue(
-                [
-                  {
-                    count: 2,
-                  },
-                ]
-              )
-          );
+        // 1ª chamada: busca o usuário
+        mockWhere.mockReturnValueOnce({
+          limit: vi.fn().mockResolvedValue([{ id: 2, role: "user" }])
+        });
+        
+        // 2ª chamada: conta admins
+        mockWhere.mockReturnValueOnce(
+          vi.fn().mockResolvedValue([{ count: 2 }])
+        );
 
         mockSet.mockReturnValue({
           where: vi
@@ -382,6 +338,12 @@ describe(
     it(
       "returns users list",
       async () => {
+        // Mock para retornar uma lista de usuários
+        mockLimit.mockResolvedValueOnce([
+          { id: 1, name: "User 1" },
+          { id: 2, name: "User 2" }
+        ]);
+
         const ctx =
           createPublicContext();
 

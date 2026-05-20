@@ -145,6 +145,8 @@ export async function registerUser(data: {
     throw new Error("Database not available");
   }
 
+  const birthDate = validateDate(data.birthDate);
+
   const emailExists = await db
     .select()
     .from(users)
@@ -175,7 +177,7 @@ export async function registerUser(data: {
     .values({
       username: data.username,
       name: data.name,
-      birthDate: validateDate(data.birthDate),
+      birthDate: birthDate, // Usa a data já validada
       gender: data.gender,
       email: normalizeEmail(data.email),
       passwordHash,
@@ -578,8 +580,8 @@ export async function getUserStats(
     );
 
   return {
-    totalCheckins: result?.[0]?.totalCheckins ?? 0,
-    uniquePlaces: result?.[0]?.uniquePlaces ?? 0,
+    totalCheckins: Number(result?.[0]?.totalCheckins ?? 0),
+    uniquePlaces: Number(result?.[0]?.uniquePlaces ?? 0),
     avgRating: Number(result?.[0]?.avgRating ?? 0),
   };
 }
@@ -649,9 +651,8 @@ export async function getPlaceStats(
         placeId
       )
     );
-
   return {
-    totalCheckins: result?.[0]?.totalCheckins ?? 0,
+    totalCheckins: Number(result?.[0]?.totalCheckins ?? 0),
     avgRating: Number(result?.[0]?.avgRating ?? 0),
   };
 }
